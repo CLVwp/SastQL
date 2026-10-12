@@ -70,7 +70,7 @@ CONTRIBUTING.md  fork policy, PR rules — license-touching PRs rejected on sigh
 
 ## Distribution (npm)
 
-- `npm/` wraps the binary for `npx` / `pnpm dlx` / `bunx` (esbuild/biome pattern): main package `sastql` + one optionalDependency package per platform (`sastql-<os>-<arch>[-gnu|-musl]`).
+- `npm/` wraps the binary for `npx` / `pnpm dlx` / `bunx` (esbuild/biome pattern): main package `@clv.wp/sastql` (npm's typosquat filter blocks unscoped `sastql` — too close to `fastq`; the `bin` name stays unscoped `sastql`) + one optionalDependency package per platform (`sastql-<os>-<arch>[-gnu|-musl]`).
 - Platform packages are **generated, not checked in** (`npm/scripts/make-platform-package.mjs`, output in `npm/pkgs/`, gitignored). Targets → package names are mapped in that script; adding a target means adding it there **and** to `npm/package.json` `optionalDependencies` **and** the release matrix.
 - Cargo version is the single source of truth: releases are tag-driven (`git tag v0.1.0 && git push --tags`); `.github/workflows/release.yml` builds each target on a native runner and stamps npm versions (`stamp-main.mjs`). Needs the `NPM_TOKEN` secret.
 - npm packages are `UNLICENSED` on purpose — the source-available terms in `LICENSE` ship inside every package.
