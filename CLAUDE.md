@@ -62,6 +62,13 @@ docs/UML.md      feature mapping, diagrams, rule matrix
 - No new dependency without a one-line justification in the PR/commit.
 - Keep violations self-contained: rule id, severity, message, offending SQL snippet. (Line/col precision is a roadmap item — don't fake it.)
 
+## Distribution (npm)
+
+- `npm/` wraps the binary for `npx` / `pnpm dlx` / `bunx` (esbuild/biome pattern): main package `sastql` + one optionalDependency package per platform (`sastql-<os>-<arch>[-gnu|-musl]`).
+- Platform packages are **generated, not checked in** (`npm/scripts/make-platform-package.mjs`, output in `npm/pkgs/`, gitignored). Targets → package names are mapped in that script; adding a target means adding it there **and** to `npm/package.json` `optionalDependencies` **and** the release matrix.
+- Cargo version is the single source of truth: releases are tag-driven (`git tag v0.1.0 && git push --tags`); `.github/workflows/release.yml` builds each target on a native runner and stamps npm versions (`stamp-main.mjs`). Needs the `NPM_TOKEN` secret.
+- npm packages are `UNLICENSED` on purpose — the source-available terms in `LICENSE` ship inside every package.
+
 ## Testing
 
 - One unit test per rule, in the rule's file: parse a SQL string, assert on returned violations.

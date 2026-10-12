@@ -23,10 +23,17 @@ Most SQL bugs are boring and static: a `DELETE` without `WHERE`, a `SELECT *` th
 ## Install
 
 ```bash
-git clone https://github.com/<you>/sastql.git
-cd sastql
-cargo install --path .
+# Any Node.js project — no Rust toolchain needed
+npx sastql check migrations/ --dialect postgres    # or: pnpm dlx / bunx
+
+# As a dev dependency (adds the `sastql` binary to node_modules/.bin)
+npm install --save-dev sastql
+
+# From source
+cargo install --git https://github.com/CLVwp/SastQL
 ```
+
+Prebuilt binaries for Windows x64, Linux x64/arm64 (glibc & musl) and macOS x64/arm64 are shipped as per-platform npm packages; npm installs only the one matching your machine.
 
 ## Usage
 
@@ -119,3 +126,4 @@ SastQL is **source-available** - deliberately **not** open source. The code is p
 - **Any commercial use requires the Author's prior written permission**, with financial terms set at the Author's sole discretion.
 - **No redistribution, no published forks, no derivative works** without permission - public forks are tolerated solely to propose contributions back.
 - Contributions transfer full perpetual rights to the Author.
+- Want to contribute? Read [CONTRIBUTING.md](CONTRIBUTING.md) first — PR rules and the fork policy are spelled out there.
