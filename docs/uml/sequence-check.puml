@@ -1,0 +1,25 @@
+@startuml sequence-check
+actor "User / CI" as U
+participant "CLI" as CLI
+participant "ParserFacade\n(sqlparser-rs)" as P
+participant "Analyzer" as A
+participant "Rules" as R
+participant "Report" as Rep
+
+U -> CLI : check migrations/ --dialect postgres
+loop over .sql files
+  CLI -> P : parse(sql, PostgreSqlDialect)
+  alt parse error
+    P --> CLI : Err(ParseError)
+    CLI --> U : exit 2 + message
+  else ok
+    P --> CLI : Vec<Statement>
+    CLI -> A : analyze(statements, Postgres)
+    A -> R : check(stmt, dialect) for each rule
+    R --> A : Vec<Message>
+  end
+end
+A --> CLI : Report
+CLI -> CLI : render (Human | Json)
+CLI --> U : exit 0 | 1
+@enduml

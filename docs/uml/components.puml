@@ -1,0 +1,19 @@
+@startuml components
+!pragma layout smetana
+skinparam componentStyle rectangle
+
+component "CLI\n(clap)" as cli
+component "Parser facade\n(sqlparser-rs)" as parser
+component "Analyzer" as analyzer
+component "Rule 1..N\n(one file per rule)" as rules
+component "Report" as report
+component "Human output" as human
+component "JSON output" as json
+
+cli --> parser : files + dialect
+parser --> analyzer : Vec<Statement>
+analyzer --> rules : check(stmt, dialect)
+rules --> report : violations
+report --> human
+report --> json
+@enduml

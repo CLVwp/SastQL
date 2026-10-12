@@ -1,0 +1,63 @@
+SastQL - Custom License
+
+Copyright (c) 2026 Clément Viellard ("the Author").
+All rights reserved.
+
+1. DEFINITIONS
+
+   - "Software": the SastQL source code, its binaries, documentation and
+     associated files, in this repository or any copy of it.
+   - "Commercial Use": any use of the Software that is intended for or
+     directed toward commercial advantage or monetary compensation,
+     including but not limited to: use in a paid product or service, use
+     in the course of paid employment or consulting, resale, and offering
+     it as part of a paid toolchain or CI offering.
+
+2. GRANT - PERSONAL AND NON-COMMERCIAL USE
+
+   The Author grants you a free, non-exclusive, non-transferable,
+   revocable license to:
+
+   - use the Software for personal, educational or research purposes;
+   - copy and modify it for those same purposes, for your own use;
+   - fork the repository on a public hosting platform for the sole
+     purpose of proposing contributions back to the Author.
+
+3. COMMERCIAL USE
+
+   Any Commercial Use requires the Author's prior explicit written
+   agreement (email is sufficient), which may include financial terms
+   set at the Author's sole discretion. Without such an agreement,
+   Commercial Use is strictly prohibited.
+
+4. REDISTRIBUTION, FORKS AND DERIVATIVE WORKS
+
+   - You may NOT redistribute, publish, sublicense, sell or host the
+     Software, in source or binary form, in whole or in part, without
+     the Author's prior written permission. This includes modified
+     versions and works derived from the Software ("forks").
+   - Public forks made under section 2 (contribution purposes only) do
+     not grant any right to distribute or operate the forked code beyond
+     proposing it back to the Author.
+   - Any permission granted by the Author may be personal, scoped and
+     revocable at the Author's sole discretion.
+
+5. CONTRIBUTIONS
+
+   By submitting a contribution (code, documentation, ideas), you grant
+   the Author a perpetual, worldwide, royalty-free, irrevocable right to
+   use, modify, relicense and commercialize it, without restriction or
+   compensation. You confirm you are entitled to make this grant.
+
+6. NO WARRANTY
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+   CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM THE SOFTWARE.
+
+7. TERMINATION
+
+   The rights granted here end automatically if you breach any term,
+   in particular sections 3 and 4.
+
+Contact: <clementviellard@gmail.com>

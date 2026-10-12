@@ -1,0 +1,72 @@
+SastQL - Licence personnalisée (version française faisant foi)
+
+Copyright (c) 2026 Clément Viellard (« l'Auteur »).
+Tous droits réservés.
+
+En cas de divergence entre la version anglaise (LICENSE) et la présente
+version française, la version française prévaut.
+
+1. DÉFINITIONS
+
+   - « Logiciel » : le code source de SastQL, ses binaires, sa
+     documentation et tout fichier associé, dans ce dépôt ou toute copie.
+   - « Utilisation commerciale » : toute utilisation du Logiciel visant
+     ou pouvant procurer un avantage commercial ou une compensation
+     financière, y compris mais sans s'y limiter : intégration dans un
+     produit ou service payant, utilisation dans le cadre d'un emploi ou
+     d'une prestation rémunérée, revente, et offre au sein d'une chaîne
+     d'outils ou d'une offre CI payante.
+
+2. LICENCE - USAGE PERSONNEL ET NON COMMERCIAL
+
+   L'Auteur accorde une licence gratuite, non exclusive, non
+   transférable et révocable permettant de :
+
+   - utiliser le Logiciel à des fins personnelles, éducatives ou de
+     recherche ;
+   - le copier et le modifier pour ces mêmes fins, pour son propre usage ;
+   - créer un fork du dépôt sur une plateforme publique dans le seul but
+     de proposer des contributions à l'Auteur.
+
+3. UTILISATION COMMERCIALE
+
+   Toute Utilisation commerciale requiert l'accord écrit et explicite
+   préalable de l'Auteur (un courriel suffit), qui peut inclure des
+   conditions financières fixées à la seule discrétion de l'Auteur.
+   Sans un tel accord, toute Utilisation commerciale est strictement
+   interdite.
+
+4. REDIFFUSION, FORKS ET ŒUVRES DÉRIVÉES
+
+   - Il est interdit de redistribuer, publier, sous-licencier, vendre ou
+     héberger le Logiciel, sous forme source ou binaire, en tout ou
+     partie, sans l'autorisation écrite préalable de l'Auteur. Cela
+     inclut les versions modifiées et les œuvres dérivées (« forks »).
+   - Les forks publics réalisés selon l'article 2 (dans le seul but de
+     contribuer) ne confèrent aucun droit de diffuser ni d'exploiter le
+     code dupliqué au-delà de sa proposition à l'Auteur.
+   - Toute autorisation accordée par l'Auteur peut être personnelle,
+     limitée dans son périmètre et révocable à la seule discrétion de
+     l'Auteur.
+
+5. CONTRIBUTIONS
+
+   En soumettant une contribution (code, documentation, idées), vous
+   accordez à l'Auteur un droit perpétuel, mondial, sans redevance et
+   irrévocable de l'utiliser, la modifier, la relicencier et la
+   commercialiser, sans restriction ni compensation. Vous garantissez
+   être en mesure d'accorder ce droit.
+
+6. ABSENCE DE GARANTIE
+
+   LE LOGICIEL EST FOURNI « EN L'ÉTAT », SANS AUCUNE GARANTIE, EXPRESSE
+   OU IMPLICITE. EN AUCUN CAS L'AUTEUR NE POURRA ÊTRE TENU RESPONSABLE
+   DE TOUTE RÉCLAMATION, DOMMAGE OU AUTRE RESPONSABILITÉ DÉCOULANT DU
+   LOGICIEL.
+
+7. RÉSILIATION
+
+   Les droits accordés aux présentes cessent automatiquement en cas de
+   violation de l'une des clauses, en particulier les articles 3 et 4.
+
+Droit applicable : droit français. Contact : clementviellard@gmail.com

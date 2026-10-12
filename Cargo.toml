@@ -1,0 +1,8 @@
+[package]
+name = "sastql"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = { version = "4.6.7", features = ["derive"] }
+sqlparser = { version = "0.63.0", features = ["visitor"] }

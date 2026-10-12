@@ -1,0 +1,70 @@
+@startuml classes
+!pragma layout smetana
+hide empty members
+
+class Cli {
+  +paths: Vec~PathBuf~
+  +dialect: DialectKind
+  +format: OutputFormat
+  +rules_filter: Option~Vec~String~~
+  +run(): i32
+}
+enum DialectKind {
+  Postgres
+  Sqlite
+}
+class ParserFacade {
+  +parse(sql, dialect): Result~Vec~Statement~~
+}
+class Analyzer {
+  +rules: Vec~Box~dyn Rule~~
+  +analyze(statements, dialect): Report
+}
+interface Rule {
+  +id(): str
+  +severity(): Severity
+  +description(): str
+  +check(stmt, dialect): Vec~Message~
+}
+class SelectStar
+class NoWhereOnMutation
+class MissingLimit
+class NotInNullTrap
+class DialectPortability
+class TypeAffinity
+enum Severity {
+  Error
+  Warning
+  Info
+}
+class Violation {
+  +rule_id: String
+  +severity: Severity
+  +message: String
+  +snippet: String
+}
+class Report {
+  +violations: Vec~Violation~
+  +files_scanned: usize
+  +exit_code(): i32
+}
+enum OutputFormat {
+  Human
+  Json
+}
+
+Cli --> DialectKind
+Cli --> ParserFacade : parse
+Cli --> Analyzer : analyze
+Cli --> OutputFormat : render
+Analyzer o-- Rule
+Rule <|.. SelectStar
+Rule <|.. NoWhereOnMutation
+Rule <|.. MissingLimit
+Rule <|.. NotInNullTrap
+Rule <|.. DialectPortability
+Rule <|.. TypeAffinity
+Rule --> Severity
+Analyzer --> Report
+Report o-- Violation
+@enduml

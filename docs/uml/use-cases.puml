@@ -1,0 +1,25 @@
+@startuml use-cases
+!pragma layout smetana
+left to right direction
+actor Developer
+actor "CI Pipeline" as CI
+
+rectangle SastQL {
+  usecase "Check .sql files" as UC1
+  usecase "Choose target dialect\n(postgres | sqlite)" as UC2
+  usecase "Select rules subset" as UC3
+  usecase "Get human report" as UC4
+  usecase "Get JSON report" as UC5
+  usecase "Fail build on violations" as UC6
+}
+
+Developer --> UC1
+Developer --> UC2
+Developer --> UC3
+Developer --> UC4
+Developer --> UC5
+CI --> UC1
+CI --> UC2
+CI --> UC5
+CI --> UC6
+@enduml

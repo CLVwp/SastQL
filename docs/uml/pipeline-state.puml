@@ -1,0 +1,10 @@
+@startuml pipeline-state
+!pragma layout smetana
+[*] --> Reading : CLI args valid
+Reading --> Parsing : file content read
+Parsing --> Analyzing : Vec<Statement>
+Parsing --> Failed : ParseError
+Analyzing --> Reporting : violations collected
+Reporting --> [*] : exit 0 / 1
+Failed --> [*] : exit 2
+@enduml
