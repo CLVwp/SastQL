@@ -49,13 +49,13 @@ try {
   copyFileSync(fallback, join(out, "bin", exe));
 }
 copyFileSync("LICENSE", join(out, "LICENSE"));
-copyFileSync("npm/README.platform.md", join(out, "README.md"));
+copyFileSync("npm/PLATFORM_README.md", join(out, "README.md"));
 
 const manifest = {
   name: t.pkg,
   version,
   description: `SastQL binary (${target})`,
-  license: "UNLICENSED",
+  license: "SEE LICENSE IN LICENSE",
   os: t.os,
   cpu: t.cpu,
   ...(t.libc ? { libc: t.libc } : {}),

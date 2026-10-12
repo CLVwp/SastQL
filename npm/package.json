@@ -1,8 +1,8 @@
 {
   "name": "@clv.wp/sastql",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Static analyzer (SAST) for SQL files targeting PostgreSQL and SQLite.",
-  "license": "UNLICENSED",
+  "license": "SEE LICENSE IN LICENSE",
   "author": "CLVwp",
   "repository": {
     "type": "git",
@@ -28,11 +28,11 @@
     "sqlite"
   ],
   "optionalDependencies": {
-    "sastql-win32-x64": "0.1.2",
-    "sastql-linux-x64-gnu": "0.1.2",
-    "sastql-linux-x64-musl": "0.1.2",
-    "sastql-linux-arm64-gnu": "0.1.2",
-    "sastql-darwin-arm64": "0.1.2",
-    "sastql-darwin-x64": "0.1.2"
+    "sastql-win32-x64": "0.1.3",
+    "sastql-linux-x64-gnu": "0.1.3",
+    "sastql-linux-x64-musl": "0.1.3",
+    "sastql-linux-arm64-gnu": "0.1.3",
+    "sastql-darwin-arm64": "0.1.3",
+    "sastql-darwin-x64": "0.1.3"
   }
 }
