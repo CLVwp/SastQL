@@ -26,6 +26,7 @@ Hard-won facts for this exact version — when in doubt, grep the registry sourc
 - Language: the conversation with the user is in French; code, comments and docs are in English.
 - License stance is fixed: **source-available, deliberately not open source** (see `LICENSE` / `LICENSE.fr`, French version authoritative). Never propose MIT or any OSS license, never relax the no-commercial-use / no-redistribution terms.
 - `Cargo.lock` is committed on purpose (binary project) — don't add it to `.gitignore`.
+- `.claude/settings.json` hooks: `.rs` edits are auto-formatted on save; `Cargo.lock` edits and `cargo add/rm` commands are **blocked** by the dep guard (dependency changes need user confirmation first).
 
 ## Commands
 
@@ -50,12 +51,17 @@ src/
     *.rs         one file per rule, unit tests inside each file
 tests/fixtures/  .sql samples used by integration tests
 docs/UML.md      feature mapping, diagrams, rule matrix
+.github/workflows/  ci.yml (PR/push gate: fmt+clippy+test) · release.yml (tag v* → npm publish)
+npm/             npm packaging (main pkg + per-platform; pkgs/ generated, gitignored)
+CONTRIBUTING.md  fork policy, PR rules — license-touching PRs rejected on sight
+.claude/         hooks (fmt on edit, dep guard) · /new-rule skill · rule-reviewer agent
 ```
 
 ## Conventions
 
 - **Adding a rule**: create `src/rules/<id>.rs` implementing `Rule`, register it in `rules/mod.rs`, add a unit test with a minimal SQL sample (positive + negative case), add the rule to the table in `README.md` and `docs/UML.md`.
   Use the `check_sql` helper in `rules/mod.rs` for unit tests. Rules run by default; override `opt_in()` to make one `--rules`-only. Add a trigger in `tests/fixtures/dirty/` and update the violation count asserted in `tests/integration.rs` — it pins the exact number.
+  The `/new-rule` skill encodes this checklist step by step; run the `rule-reviewer` agent on the finished rule.
 - **Dialect-specific logic** goes inside the rule (check `dialect`), not in the parser layer. The parser must stay dialect-agnostic apart from selecting the `Dialect` impl.
 - **Fail loudly**: a parse error is exit code `2` with the message — never skip a file silently. Violations found → exit `1`. Clean → `0`.
 - Rule ids are kebab-case, stable once released (CI depends on them).
@@ -68,6 +74,10 @@ docs/UML.md      feature mapping, diagrams, rule matrix
 - Platform packages are **generated, not checked in** (`npm/scripts/make-platform-package.mjs`, output in `npm/pkgs/`, gitignored). Targets → package names are mapped in that script; adding a target means adding it there **and** to `npm/package.json` `optionalDependencies` **and** the release matrix.
 - Cargo version is the single source of truth: releases are tag-driven (`git tag v0.1.0 && git push --tags`); `.github/workflows/release.yml` builds each target on a native runner and stamps npm versions (`stamp-main.mjs`). Needs the `NPM_TOKEN` secret.
 - npm packages are `UNLICENSED` on purpose — the source-available terms in `LICENSE` ship inside every package.
+
+## Git & CI
+
+- Remote `github.com/CLVwp/SastQL`. `main` is protected: direct pushes are **rejected** — PR required, `ci` check must pass, `enforce_admins` on (applies to the owner too). Workflow: branch → push → PR → merge when CI is green.
 
 ## Testing
 
