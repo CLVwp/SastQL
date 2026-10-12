@@ -16,6 +16,7 @@ Most SQL bugs are boring and static: a `DELETE` without `WHERE`, a `SELECT *` th
 | `UPDATE` / `DELETE` without `WHERE` | `no-where-on-mutation` | ✅ | ✅ | error |
 | `SELECT` without `LIMIT` (opt-in) | `missing-limit` | ✅ | ✅ | info |
 | `NOT IN` over a subquery (NULL trap) | `not-in-null-trap` | ✅ | ✅ | warning |
+| Comparison with `NULL` (`=`, `!=`, `<>` never match) | `null-comparison` | ✅ | ✅ | warning |
 | Functions / operators that don't exist in the target dialect | `dialect-portability` | ✅ | ✅ | warning |
 | Column types with surprising semantics (e.g. `DATETIME` → NUMERIC affinity in SQLite) | `type-affinity` | ✅ | ✅ | warning |
 
@@ -53,7 +54,7 @@ tests/fixtures/dirty/mutations.sql: error no-where-on-mutation: DELETE from sess
 tests/fixtures/dirty/portability.sql: warning not-in-null-trap: NOT IN over a subquery returns no rows if the subquery yields NULL; use NOT EXISTS
     SELECT id FROM users WHERE id NOT IN (SELECT manager_id FROM users)
 
-4 file(s) scanned, 5 violation(s)
+5 file(s) scanned, 6 violation(s)
 ```
 
 ## Try the demo
@@ -62,11 +63,11 @@ The repo ships the fixtures the integration tests use — one clean set, one dir
 
 ```
 tests/fixtures/clean/   clean on both dialects
-tests/fixtures/dirty/   mutations.sql · portability.sql · ddl.sql
+tests/fixtures/dirty/   mutations.sql · portability.sql · ddl.sql · null_comparison.sql
 ```
 
 ```bash
-# Dirty set: 5 violations, exit code 1
+# Dirty set: 6 violations, exit code 1
 cargo run -- check tests/fixtures/dirty --dialect sqlite
 
 # Same rules, Postgres target: type-affinity is SQLite-only, so fewer violations
@@ -99,7 +100,7 @@ Full feature mapping and UML diagrams: [docs/UML.md](docs/UML.md).
 
 ## Roadmap
 
-v0.1 is feature-complete: the six rules above are implemented and tested. Next, in order:
+v0.1 is feature-complete: the seven rules above are implemented and tested. Next, in order:
 
 | # | Item | What it means |
 |---|---|---|

@@ -2,6 +2,7 @@ pub mod dialect_portability;
 pub mod missing_limit;
 pub mod no_where_on_mutation;
 pub mod not_in_null_trap;
+pub mod null_comparison;
 pub mod select_star;
 pub mod type_affinity;
 
@@ -31,6 +32,7 @@ pub fn all_rules() -> Vec<Box<dyn Rule>> {
         Box::new(no_where_on_mutation::NoWhereOnMutation),
         Box::new(missing_limit::MissingLimit),
         Box::new(not_in_null_trap::NotInNullTrap),
+        Box::new(null_comparison::NullComparison),
         Box::new(dialect_portability::DialectPortability),
         Box::new(type_affinity::TypeAffinity),
     ]

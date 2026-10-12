@@ -20,13 +20,14 @@ fn dirty_fixture_exits_1_and_reports_every_default_rule() {
         "select-star",
         "no-where-on-mutation",
         "not-in-null-trap",
+        "null-comparison",
         "dialect-portability",
         "type-affinity",
     ] {
         assert!(stdout.contains(rule_id), "missing {rule_id} in:\n{stdout}");
     }
-    assert!(stdout.contains("5 violation(s)"), "stdout:\n{stdout}");
-    assert!(stdout.contains("3 file(s)"), "stdout:\n{stdout}");
+    assert!(stdout.contains("6 violation(s)"), "stdout:\n{stdout}");
+    assert!(stdout.contains("4 file(s)"), "stdout:\n{stdout}");
 }
 
 #[test]
@@ -47,10 +48,10 @@ fn json_format_is_parseable_summary() {
         "json",
     ]);
     assert_eq!(code, 1, "stdout:\n{stdout}");
-    assert!(stdout.contains("\"files_scanned\": 3"), "stdout:\n{stdout}");
+    assert!(stdout.contains("\"files_scanned\": 4"), "stdout:\n{stdout}");
     assert_eq!(
         stdout.matches("\"rule_id\"").count(),
-        5,
+        6,
         "stdout:\n{stdout}"
     );
 }

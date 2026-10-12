@@ -22,6 +22,7 @@ Out of scope for v0.1 (see roadmap in README): scanning SQL strings inside appli
 | `no-where-on-mutation` | `UPDATE`/`DELETE` with no `WHERE` clause | ✅ | ✅ | error |
 | `missing-limit` | bare `SELECT` without `LIMIT` (opt-in via `--rules`) | ✅ | ✅ | info |
 | `not-in-null-trap` | `expr NOT IN (subquery)` — returns no rows if subquery yields a `NULL` | ✅ | ✅ | warning |
+| `null-comparison` | comparing with `NULL` via `=` / `!=` / `<>` — never true (three-valued logic); use `IS [NOT] NULL` | ✅ | ✅ | warning |
 | `dialect-portability` | functions/operators absent from target dialect (e.g. `NOW()` in SQLite, `::` cast in SQLite, `CONCAT()` pre-3.44) | ✅ | ✅ | warning |
 | `type-affinity` | DDL types with surprising semantics (`DATETIME` → NUMERIC affinity in SQLite; non-existent types in PG) | — | ✅ | warning |
 
