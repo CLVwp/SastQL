@@ -49,6 +49,7 @@ try {
   copyFileSync(fallback, join(out, "bin", exe));
 }
 copyFileSync("LICENSE", join(out, "LICENSE"));
+copyFileSync("npm/README.platform.md", join(out, "README.md"));
 
 const manifest = {
   name: t.pkg,
