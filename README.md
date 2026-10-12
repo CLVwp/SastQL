@@ -24,10 +24,10 @@ Most SQL bugs are boring and static: a `DELETE` without `WHERE`, a `SELECT *` th
 
 ```bash
 # Any Node.js project — no Rust toolchain needed
-npx sastql check migrations/ --dialect postgres    # or: pnpm dlx / bunx
+npx @clv.wp/sastql check migrations/ --dialect postgres    # or: pnpm dlx / bunx
 
-# As a dev dependency (adds the `sastql` binary to node_modules/.bin)
-npm install --save-dev sastql
+# As a dev dependency (adds the unscoped `sastql` binary to node_modules/.bin)
+npm install --save-dev @clv.wp/sastql
 
 # From source
 cargo install --git https://github.com/CLVwp/SastQL
