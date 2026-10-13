@@ -1,6 +1,7 @@
 # Release: push a tag `v*` → build every target natively on its runner,
 # publish one npm platform package per target, then the main `sastql` package.
-# Requires the NPM_TOKEN secret (automation token) on the GitHub repo.
+# Auth: npm trusted publishing (OIDC) — each package must list CLVwp/SastQL +
+# release.yml as trusted publisher on npmjs.com; no NPM_TOKEN secret involved.
 name: release
 
 on:
@@ -9,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 env:
   CARGO_TERM_COLOR: always
@@ -35,6 +37,7 @@ jobs:
           - target: x86_64-apple-darwin
             os: macos-latest
     runs-on: ${{ matrix.os }}
+    environment: Github-Action-SastQL-Release
     env:
       VERSION: ${{ github.ref_name }}
     steps:
@@ -55,29 +58,26 @@ jobs:
         run: echo "dir=$(node npm/scripts/make-platform-package.mjs ${{ matrix.target }})" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           registry-url: https://registry.npmjs.org/
       - name: Publish platform package
-        run: npm publish --access public
+        run: npm publish --access public --provenance
         working-directory: ${{ steps.pkg.outputs.dir }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   npm-main:
     needs: platform
     runs-on: ubuntu-latest
+    environment: Github-Action-SastQL-Release
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           registry-url: https://registry.npmjs.org/
       - name: Stamp version
         run: node npm/scripts/stamp-main.mjs "${GITHUB_REF_NAME#v}"
       - name: Copy license
         run: cp LICENSE npm/LICENSE
       - name: Publish main package
-        run: npm publish --access public
+        run: npm publish --access public --provenance
         working-directory: npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
