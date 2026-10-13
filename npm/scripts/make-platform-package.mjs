@@ -56,6 +56,11 @@ const manifest = {
   version,
   description: `SastQL binary (${target})`,
   license: "SEE LICENSE IN LICENSE",
+  // npm cross-checks this against the publishing workflow's repo (OIDC/provenance).
+  repository: {
+    type: "git",
+    url: "git+https://github.com/CLVwp/SastQL.git",
+  },
   os: t.os,
   cpu: t.cpu,
   ...(t.libc ? { libc: t.libc } : {}),
