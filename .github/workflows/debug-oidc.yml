@@ -1,0 +1,31 @@
+# Temporary diagnostic: prints the OIDC claims npm receives from a job
+# configured exactly like release.yml's publish jobs. Delete once the
+# trusted publishing issue is resolved.
+name: debug-oidc
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+
+jobs:
+  claims:
+    runs-on: ubuntu-latest
+    environment: Github-Action-SastQL-Release
+    steps:
+      - name: Decode OIDC claims
+        shell: bash
+        run: |
+          resp=$(curl -s "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=npm:registry.npmjs.org" \
+            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN")
+          jwt=$(echo "$resp" | jq -r .value)
+          python3 - "$jwt" <<'EOF'
+          import base64, json, sys
+          p = sys.argv[1].split('.')[1]
+          p += '=' * (-len(p) % 4)
+          claims = json.loads(base64.urlsafe_b64decode(p))
+          keep = ['repository', 'repository_owner', 'workflow', 'job_workflow_ref',
+                  'job_workflow_sha', 'environment', 'ref', 'ref_type', 'actor', 'aud']
+          print(json.dumps({k: claims.get(k) for k in keep}, indent=2))
+          EOF

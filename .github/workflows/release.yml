@@ -37,7 +37,6 @@ jobs:
           - target: x86_64-apple-darwin
             os: macos-latest
     runs-on: ${{ matrix.os }}
-    environment: Github-Action-SastQL-Release
     env:
       VERSION: ${{ github.ref_name }}
     steps:
@@ -67,7 +66,6 @@ jobs:
   npm-main:
     needs: platform
     runs-on: ubuntu-latest
-    environment: Github-Action-SastQL-Release
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
