@@ -60,7 +60,7 @@ CONTRIBUTING.md  fork policy, PR rules — license-touching PRs rejected on sigh
 ## Conventions
 
 - **Adding a rule**: create `src/rules/<id>.rs` implementing `Rule`, register it in `rules/mod.rs`, add a unit test with a minimal SQL sample (positive + negative case), add the rule to the table in `README.md` and `docs/UML.md`.
-  Use the `check_sql` helper in `rules/mod.rs` for unit tests. Rules run by default; override `opt_in()` to make one `--rules`-only. Add a trigger in `tests/fixtures/dirty/` and update the violation count asserted in `tests/integration.rs` — it pins the exact number.
+  Use the `check_sql` helper in `rules/mod.rs` for unit tests. Rules run by default; override `opt_in()` to make one `--rules`-only. Add a trigger in `tests/fixtures/dirty/` (minimal set, one hit per file) or in `tests/fixtures/realistic/bugs_*.sql` (simulated shop DB, per-rule counts pinned in `tests/integration.rs`), then update the pinned counts in `tests/integration.rs`.
   The `/new-rule` skill encodes this checklist step by step; run the `rule-reviewer` agent on the finished rule.
 - **Dialect-specific logic** goes inside the rule (check `dialect`), not in the parser layer. The parser must stay dialect-agnostic apart from selecting the `Dialect` impl.
 - **Fail loudly**: a parse error is exit code `2` with the message — never skip a file silently. Violations found → exit `1`. Clean → `0`.
