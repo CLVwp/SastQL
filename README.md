@@ -42,14 +42,16 @@ Most SQL bugs are boring and static: a `DELETE` without `WHERE`, a `SELECT *` th
 
 ```bash
 # Any Node.js project — no Rust toolchain needed
-npx @clv.wp/sastql check migrations/ --dialect postgres    # or: pnpm dlx / bunx
+npx "@clv.wp/sastql" check migrations/ --dialect postgres    # or: pnpm dlx / bunx
 
 # As a dev dependency (adds the unscoped `sastql` binary to node_modules/.bin)
-npm install --save-dev @clv.wp/sastql
+npm install --save-dev "@clv.wp/sastql"
 
 # From source
 cargo install --git https://github.com/CLVwp/SastQL
 ```
+
+> The quotes matter in **PowerShell** — `@clv.wp` collides with its `@` splatting operator. They are harmless in cmd, Git Bash and sh, so copy-paste as-is.
 
 Prebuilt binaries for Windows x64, Linux x64/arm64 (glibc & musl) and macOS x64/arm64 are shipped as per-platform npm packages; npm installs only the one matching your machine.
 
