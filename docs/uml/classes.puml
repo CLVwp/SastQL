@@ -30,8 +30,27 @@ class SelectStar
 class NoWhereOnMutation
 class MissingLimit
 class NotInNullTrap
+class NullComparison
 class DialectPortability
 class TypeAffinity
+class CaseWithoutElse
+class JoinWithoutOn
+class NaturalJoin
+class InsertWithoutColumns
+class OffsetWithoutLimit
+class OrderByRandom
+class LeadingWildcardLike
+class StringPlus
+class WeakHash
+class SelectStarPlus
+class GrantAll
+class TableNoPk
+class FloatMoney
+class UnionWithoutAll
+class OrderByOrdinal
+class NaiveTimestamp
+class LimitWithoutOrderBy
+class DestructiveDdl
 enum Severity {
   Error
   Warning
@@ -62,8 +81,27 @@ Rule <|.. SelectStar
 Rule <|.. NoWhereOnMutation
 Rule <|.. MissingLimit
 Rule <|.. NotInNullTrap
+Rule <|.. NullComparison
 Rule <|.. DialectPortability
 Rule <|.. TypeAffinity
+Rule <|.. CaseWithoutElse
+Rule <|.. JoinWithoutOn
+Rule <|.. NaturalJoin
+Rule <|.. InsertWithoutColumns
+Rule <|.. OffsetWithoutLimit
+Rule <|.. OrderByRandom
+Rule <|.. LeadingWildcardLike
+Rule <|.. StringPlus
+Rule <|.. WeakHash
+Rule <|.. SelectStarPlus
+Rule <|.. GrantAll
+Rule <|.. TableNoPk
+Rule <|.. FloatMoney
+Rule <|.. UnionWithoutAll
+Rule <|.. OrderByOrdinal
+Rule <|.. NaiveTimestamp
+Rule <|.. LimitWithoutOrderBy
+Rule <|.. DestructiveDdl
 Rule --> Severity
 Analyzer --> Report
 Report o-- Violation

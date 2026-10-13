@@ -8,7 +8,7 @@ Not regex on strings: every rule runs on a typed AST built by [`sqlparser-rs`](h
 
 Most SQL bugs are boring and static: a `DELETE` without `WHERE`, a `SELECT *` that breaks when a column is added, a `NOT IN` subquery that silently returns nothing because of a `NULL`. Linters exist for code, rarely for SQL. SastQL is that linter.
 
-## Features (v0.1)
+## Features (v0.2)
 
 | Rule | Id | PostgreSQL | SQLite | Default severity |
 |---|---|:---:|:---:|---|
@@ -18,7 +18,25 @@ Most SQL bugs are boring and static: a `DELETE` without `WHERE`, a `SELECT *` th
 | `NOT IN` over a subquery (NULL trap) | `not-in-null-trap` | ✅ | ✅ | warning |
 | Comparison with `NULL` (`=`, `!=`, `<>` never match) | `null-comparison` | ✅ | ✅ | warning |
 | Functions / operators that don't exist in the target dialect | `dialect-portability` | ✅ | ✅ | warning |
-| Column types with surprising semantics (e.g. `DATETIME` → NUMERIC affinity in SQLite) | `type-affinity` | ✅ | ✅ | warning |
+| Column types with surprising semantics (e.g. `DATETIME` → NUMERIC affinity in SQLite) | `type-affinity` | — | ✅ | warning |
+| `CASE` without `ELSE` (silent `NULL`) | `case-without-else` | ✅ | ✅ | warning |
+| `JOIN` without `ON`/`USING`, comma-separated `FROM` (cartesian product) | `join-without-on` | ✅ | ✅ | warning |
+| `NATURAL JOIN` (columns matched by name) | `natural-join` | ✅ | ✅ | warning |
+| `INSERT` without a column list | `insert-without-columns` | ✅ | ✅ | warning |
+| `OFFSET` without `LIMIT` | `offset-without-limit` | ✅ | ✅ | warning |
+| `ORDER BY random()` | `order-by-random` | ✅ | ✅ | warning |
+| `LIKE` pattern starting with `%`/`_` (no index) | `leading-wildcard-like` | ✅ | ✅ | warning |
+| `+` on strings in SQLite (coerces to number) | `string-plus` | — | ✅ | warning |
+| `md5()` / `sha1()` (broken hashes) | `weak-hash` | ✅ | ✅ | warning |
+| `SELECT *, col` (wildcard + explicit columns) | `select-star-plus` | ✅ | ✅ | warning |
+| `GRANT ALL PRIVILEGES` | `grant-all` | ✅ | ✅ | warning |
+| `CREATE TABLE` without `PRIMARY KEY` | `table-no-pk` | ✅ | ✅ | warning |
+| Money-like column typed `REAL`/`FLOAT`/`DOUBLE` | `float-money` | ✅ | ✅ | warning |
+| `UNION` without `ALL` (hidden dedup sort, opt-in) | `union-without-all` | ✅ | ✅ | warning (opt-in) |
+| `ORDER BY 1` (positional, opt-in) | `order-by-ordinal` | ✅ | ✅ | warning (opt-in) |
+| `TIMESTAMP` without time zone (opt-in) | `naive-timestamp` | ✅ | — | warning (opt-in) |
+| `LIMIT`/`FETCH` without `ORDER BY` (opt-in) | `limit-without-order-by` | ✅ | ✅ | warning (opt-in) |
+| `DROP TABLE`/`TRUNCATE`/`DROP COLUMN` (opt-in) | `destructive-ddl` | ✅ | ✅ | warning (opt-in) |
 
 ## Install
 
@@ -61,27 +79,32 @@ tests/fixtures/dirty/mutations.sql: error no-where-on-mutation: DELETE from sess
 tests/fixtures/dirty/portability.sql: warning not-in-null-trap: NOT IN over a subquery returns no rows if the subquery yields NULL; use NOT EXISTS
     SELECT id FROM users WHERE id NOT IN (SELECT manager_id FROM users)
 
-5 file(s) scanned, 6 violation(s)
+4 file(s) scanned, 7 violation(s)
 ```
 
 ## Try the demo
 
-The repo ships the fixtures the integration tests use — one clean set, one dirty set (one violation per rule):
+The repo ships the fixtures the integration tests use — one clean set, one dirty set, and a realistic simulated database:
 
 ```
-tests/fixtures/clean/   clean on both dialects
-tests/fixtures/dirty/   mutations.sql · portability.sql · ddl.sql · null_comparison.sql
+tests/fixtures/clean/      clean on both dialects
+tests/fixtures/dirty/      mutations.sql · portability.sql · ddl.sql · null_comparison.sql
+tests/fixtures/realistic/  simulated shop DB: schema · seed · volume queries · deliberate bugs
 ```
 
 ```bash
-# Dirty set: 6 violations, exit code 1
+# Dirty set: 7 violations, exit code 1
 cargo run -- check tests/fixtures/dirty --dialect sqlite
 
-# Same rules, Postgres target: type-affinity is SQLite-only, so fewer violations
+# Same rules, Postgres target: SQLite-only rules stay silent, so fewer violations
 cargo run -- check tests/fixtures/dirty --dialect postgres
 
 # Clean set: 0 violations, exit code 0
 cargo run -- check tests/fixtures/clean --dialect postgres
+
+# Realistic set (simulated shop DB): 26 violations on SQLite, 23 on Postgres —
+# a detailed schema, varied data formats and volume, plus deliberate bugs
+cargo run -- check tests/fixtures/realistic --dialect sqlite
 
 # Try the opt-in rule on the dirty set: 2 violations
 cargo run -- check tests/fixtures/dirty --dialect sqlite --rules missing-limit
@@ -107,7 +130,7 @@ Full feature mapping and UML diagrams: [docs/UML.md](docs/UML.md).
 
 ## Roadmap
 
-v0.1 is feature-complete: the seven rules above are implemented and tested. Next, in order:
+v0.2 ships 25 rules — the table above — all implemented and tested. Next, in order:
 
 | # | Item | What it means |
 |---|---|---|
