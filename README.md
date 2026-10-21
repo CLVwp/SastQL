@@ -8,7 +8,7 @@ Not regex on strings: every rule runs on a typed AST built by [`sqlparser-rs`](h
 
 Most SQL bugs are boring and static: a `DELETE` without `WHERE`, a `SELECT *` that breaks when a column is added, a `NOT IN` subquery that silently returns nothing because of a `NULL`. Linters exist for code, rarely for SQL. SastQL is that linter.
 
-## Features (v0.2)
+## Features
 
 | Rule | Id | PostgreSQL | SQLite | Default severity |
 |---|---|:---:|:---:|---|
@@ -185,7 +185,7 @@ Full feature mapping and UML diagrams: [docs/UML.md](docs/UML.md).
 
 ## Roadmap
 
-v0.2 ships 25 rules — the table above — all implemented and tested. Next, in order:
+SastQL ships 25 SQL rules — the table above — plus the roadmap features below. All implemented and tested:
 
 | # | Item | What it means |
 |---|---|---|
