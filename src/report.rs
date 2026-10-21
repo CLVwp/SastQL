@@ -145,4 +145,15 @@ mod tests {
         assert!(j.contains("\\\"t\\\""), "quotes must be escaped: {j}");
         assert!(j.contains("\"files_scanned\": 1"));
     }
+
+    #[test]
+    fn json_escapes_newlines() {
+        let mut report = sample();
+        report.violations[0].snippet = "SELECT 1;\nDELETE FROM t".into();
+        let j = OutputFormat::Json.render(&report);
+        assert!(
+            j.contains("SELECT 1;\\nDELETE"),
+            "newline must be escaped: {j}"
+        );
+    }
 }

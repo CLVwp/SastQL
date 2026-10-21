@@ -1,7 +1,7 @@
 //! End-to-end: run the real binary over tests/fixtures/ (CLAUDE.md).
 use std::process::Command;
 
-fn sastql(args: &[&str]) -> (i32, String) {
+fn sastql(args: &[&str]) -> (i32, String, String) {
     let output = Command::new(env!("CARGO_BIN_EXE_sastql"))
         .args(args)
         .output()
@@ -9,12 +9,13 @@ fn sastql(args: &[&str]) -> (i32, String) {
     (
         output.status.code().unwrap_or(-1),
         String::from_utf8_lossy(&output.stdout).into_owned(),
+        String::from_utf8_lossy(&output.stderr).into_owned(),
     )
 }
 
 #[test]
 fn dirty_fixture_exits_1_and_reports_every_default_rule() {
-    let (code, stdout) = sastql(&["check", "tests/fixtures/dirty", "--dialect", "sqlite"]);
+    let (code, stdout, _) = sastql(&["check", "tests/fixtures/dirty", "--dialect", "sqlite"]);
     assert_eq!(code, 1, "stdout:\n{stdout}");
     for rule_id in [
         "select-star",
@@ -33,14 +34,14 @@ fn dirty_fixture_exits_1_and_reports_every_default_rule() {
 
 #[test]
 fn clean_fixture_exits_0() {
-    let (code, stdout) = sastql(&["check", "tests/fixtures/clean", "--dialect", "postgres"]);
+    let (code, stdout, _) = sastql(&["check", "tests/fixtures/clean", "--dialect", "postgres"]);
     assert_eq!(code, 0, "stdout:\n{stdout}");
     assert!(stdout.contains("0 violation(s)"), "stdout:\n{stdout}");
 }
 
 #[test]
 fn json_format_is_parseable_summary() {
-    let (code, stdout) = sastql(&[
+    let (code, stdout, _) = sastql(&[
         "check",
         "tests/fixtures/dirty",
         "--dialect",
@@ -59,11 +60,11 @@ fn json_format_is_parseable_summary() {
 
 #[test]
 fn opt_in_rule_only_runs_when_selected() {
-    let (code, stdout) = sastql(&["check", "tests/fixtures/dirty", "--dialect", "sqlite"]);
+    let (code, stdout, _) = sastql(&["check", "tests/fixtures/dirty", "--dialect", "sqlite"]);
     assert_eq!(code, 1, "stdout:\n{stdout}");
     assert!(!stdout.contains("missing-limit"), "stdout:\n{stdout}");
 
-    let (code, stdout) = sastql(&[
+    let (code, stdout, _) = sastql(&[
         "check",
         "tests/fixtures/dirty",
         "--dialect",
@@ -78,7 +79,7 @@ fn opt_in_rule_only_runs_when_selected() {
 
 #[test]
 fn type_affinity_is_sqlite_only_end_to_end() {
-    let (code, stdout) = sastql(&[
+    let (code, stdout, _) = sastql(&[
         "check",
         "tests/fixtures/dirty",
         "--dialect",
@@ -89,7 +90,7 @@ fn type_affinity_is_sqlite_only_end_to_end() {
     assert_eq!(code, 1, "stdout:\n{stdout}");
     assert!(stdout.contains("type-affinity"), "stdout:\n{stdout}");
 
-    let (code, _) = sastql(&[
+    let (code, _, _) = sastql(&[
         "check",
         "tests/fixtures/dirty",
         "--dialect",
@@ -102,7 +103,7 @@ fn type_affinity_is_sqlite_only_end_to_end() {
 
 #[test]
 fn unknown_rule_exits_2() {
-    let (code, _) = sastql(&["check", "tests/fixtures/dirty", "--rules", "nope"]);
+    let (code, _, _) = sastql(&["check", "tests/fixtures/dirty", "--rules", "nope"]);
     assert_eq!(code, 2);
 }
 
@@ -159,7 +160,7 @@ fn realistic_fixture_per_dialect_rule_counts() {
         ("sqlite", REALISTIC_COUNTS_SQLITE),
         ("postgres", REALISTIC_COUNTS_POSTGRES),
     ] {
-        let (code, stdout) = sastql(&[
+        let (code, stdout, _) = sastql(&[
             "check",
             "tests/fixtures/realistic",
             "--dialect",
@@ -193,7 +194,7 @@ fn realistic_opt_in_rule_counts() {
         ("naive-timestamp", "postgres", 1),
         ("naive-timestamp", "sqlite", 0),
     ] {
-        let (code, stdout) = sastql(&[
+        let (code, stdout, _) = sastql(&[
             "check",
             "tests/fixtures/realistic",
             "--dialect",
@@ -208,4 +209,76 @@ fn realistic_opt_in_rule_counts() {
             "{rule_id}/{dialect}: {stdout}"
         );
     }
+}
+
+#[test]
+fn parse_error_exits_2_with_file_and_message() {
+    // No fixture: a broken .sql under tests/fixtures/ would break the
+    // `check tests/fixtures/` walkthrough and the pinned counts.
+    let dir = std::env::temp_dir().join(format!("sastql-test-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).expect("temp dir should be creatable");
+    let broken = dir.join("broken.sql");
+    std::fs::write(&broken, "SELEC 1 FROM t;").expect("temp file should be writable");
+
+    let path = broken.to_str().expect("utf-8 path");
+    let (code, stdout, stderr) = sastql(&["check", path]);
+    assert_eq!(code, 2, "stdout:\n{stdout}");
+    assert!(stderr.contains("parse error"), "stderr:\n{stderr}");
+    assert!(stderr.contains("broken.sql"), "stderr:\n{stderr}");
+
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn no_paths_exits_2() {
+    let (code, _, stderr) = sastql(&["check"]);
+    assert_eq!(code, 2);
+    assert!(stderr.contains("no paths given"), "stderr:\n{stderr}");
+}
+
+#[test]
+fn missing_path_exits_2() {
+    let (code, _, stderr) = sastql(&["check", "tests/fixtures/does-not-exist.sql"]);
+    assert_eq!(code, 2);
+    assert!(stderr.contains("does-not-exist.sql"), "stderr:\n{stderr}");
+}
+
+#[test]
+fn non_sql_file_warns_and_exits_2() {
+    let (code, _, stderr) = sastql(&["check", "README.md"]);
+    assert_eq!(code, 2);
+    assert!(
+        stderr.contains("only .sql files are scanned"),
+        "stderr:\n{stderr}"
+    );
+    assert!(stderr.contains("no .sql files found"), "stderr:\n{stderr}");
+}
+
+#[test]
+fn single_file_scan_and_dedup() {
+    let (code, stdout, _) = sastql(&[
+        "check",
+        "tests/fixtures/clean/schema.sql",
+        "tests/fixtures/clean/schema.sql",
+        "--format",
+        "json",
+    ]);
+    assert_eq!(code, 0, "stdout:\n{stdout}");
+    assert!(stdout.contains("\"files_scanned\": 1"), "stdout:\n{stdout}");
+}
+
+#[test]
+fn multiple_rules_comma_separated() {
+    let (code, stdout, _) = sastql(&[
+        "check",
+        "tests/fixtures/realistic",
+        "--dialect",
+        "postgres",
+        "--rules",
+        "select-star,grant-all",
+    ]);
+    assert_eq!(code, 1, "stdout:\n{stdout}");
+    assert!(stdout.contains("select-star"), "stdout:\n{stdout}");
+    assert!(stdout.contains("grant-all"), "stdout:\n{stdout}");
+    assert!(stdout.contains("3 violation(s)"), "stdout:\n{stdout}"); // 2 + 1
 }
