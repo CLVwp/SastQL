@@ -120,7 +120,7 @@ cargo clippy -- -D warnings
 cargo fmt --check
 ```
 
-Per the conventions in [CLAUDE.md](CLAUDE.md): each rule has positive and negative unit tests; every rule that behaves differently per dialect is tested for each dialect; the integration tests in `tests/integration.rs` run the real binary over `tests/fixtures/` (parse → analyze → report) and assert on exit codes, rule ids and violation counts for both dialects.
+Per the conventions in [CLAUDE.md](CLAUDE.md): each rule has positive and negative unit tests; every rule that behaves differently per dialect is tested for each dialect; the integration tests in `tests/integration.rs` run the real binary over `tests/fixtures/` (parse → analyze → report) and assert on exit codes, rule ids and violation counts for both dialects. The CLI's fail-loudly contract is pinned end-to-end too: parse errors, missing paths and non-SQL input exit `2` with the message on stderr, and the parser layer has its own unit tests (BOM stripping, dialect leniency, invalid SQL).
 
 ## Design
 
