@@ -307,6 +307,37 @@ fn violation_carries_statement_line_and_column() {
     );
 }
 
+// --- SARIF (roadmap item 3) ---------------------------------------------------
+
+/// SARIF for GitHub code scanning, pinned from the same fixture as
+/// `violation_carries_statement_line_and_column` (`DELETE FROM sessions` sits
+/// on line 4 of tests/fixtures/dirty/mutations.sql).
+#[test]
+fn sarif_format_pins_rule_and_position() {
+    let (code, stdout, _) = sastql(&[
+        "check",
+        "tests/fixtures/dirty",
+        "--dialect",
+        "sqlite",
+        "--format",
+        "sarif",
+    ]);
+    assert_eq!(code, 1, "stdout:\n{stdout}");
+    assert!(
+        stdout.contains("\"version\": \"2.1.0\""),
+        "stdout:\n{stdout}"
+    );
+    assert!(
+        stdout.contains("\"ruleId\": \"no-where-on-mutation\""),
+        "stdout:\n{stdout}"
+    );
+    assert!(stdout.contains("\"startLine\": 4"), "stdout:\n{stdout}");
+    assert!(
+        stdout.contains("\"uri\": \"tests/fixtures/dirty/mutations.sql\""),
+        "forward-slash uri missing in:\n{stdout}"
+    );
+}
+
 // --- sastql.toml: severity overrides and named rule sets ---------------------
 
 /// Per-test temp dir: same pattern as `parse_error_exits_2_with_file_and_message`,
