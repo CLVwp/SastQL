@@ -71,6 +71,7 @@ class Report {
 enum OutputFormat {
   Human
   Json
+  Sarif
 }
 
 Cli --> DialectKind

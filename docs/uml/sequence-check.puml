@@ -20,6 +20,6 @@ loop over .sql files
   end
 end
 A --> CLI : Report
-CLI -> CLI : render (Human | Json)
+CLI -> CLI : render (Human | Json | Sarif)
 CLI --> U : exit 0 | 1
 @enduml

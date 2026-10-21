@@ -45,7 +45,7 @@ src/
   main.rs        CLI entry (clap): check subcommand, --dialect, --format, --rules, --config
   parser.rs      parse(sql, dialect) -> Vec<Statement>; dialect selection lives here
   analyzer.rs    runs every rule over the parsed statements -> Report
-  report.rs      Violation, Report, OutputFormat (Human | Json), rendering, exit codes
+  report.rs      Violation, Report, OutputFormat (Human | Json | Sarif), rendering, exit codes
   config.rs      sastql.toml: per-rule severity overrides + named rule sets (load, validate, resolve)
   rules/
     mod.rs       Rule trait + registry (all_rules / default_rules; opt_in filters defaults)
@@ -53,6 +53,7 @@ src/
 tests/fixtures/  .sql samples used by integration tests
 docs/UML.md      feature mapping, diagrams, rule matrix
 .github/workflows/  ci.yml (PR/push gate: fmt+clippy+test) · release.yml (tag v* → npm publish via OIDC)
+action.yml       ready-made GitHub Action (composite: npx scan → code-scanning upload)
 npm/             npm packaging (main pkg + per-platform; pkgs/ generated, gitignored)
 CONTRIBUTING.md  fork policy, PR rules — license-touching PRs rejected on sight
 .claude/         hooks (fmt on edit, dep guard) · /new-rule skill · rule-reviewer agent
