@@ -1,4 +1,5 @@
 mod analyzer;
+mod config;
 mod parser;
 mod report;
 mod rules;
@@ -12,6 +13,7 @@ use clap::{Parser as ClapParser, Subcommand};
 
 use parser::DialectKind;
 use report::{OutputFormat, Report};
+use rules::Rule;
 
 /// SastQL — SAST linter for SQL files (PostgreSQL & SQLite).
 #[derive(ClapParser)]
@@ -33,9 +35,12 @@ enum Command {
         /// Report format.
         #[arg(long, value_enum, default_value = "human")]
         format: OutputFormat,
-        /// Only run these rules (comma-separated or repeated).
+        /// Only run these rules or named sets from the config (comma-separated or repeated).
         #[arg(long, value_delimiter = ',')]
         rules: Option<Vec<String>>,
+        /// Config file (default: auto-discover ./sastql.toml).
+        #[arg(long, value_name = "PATH")]
+        config: Option<PathBuf>,
     },
 }
 
@@ -49,12 +54,24 @@ fn run() -> i32 {
         dialect,
         format,
         rules: rules_filter,
+        config: config_path,
     } = Cli::parse().command;
 
     if paths.is_empty() {
         eprintln!("error: no paths given (pass .sql files or directories)");
         return 2;
     }
+
+    // An invalid config is a usage error; a missing auto-discovered file is
+    // not an error — default behavior applies.
+    let config = match config::Config::load(config_path.as_deref()) {
+        Ok(Some(c)) => c,
+        Ok(None) => config::Config::default(),
+        Err(err) => {
+            eprintln!("error: {err}");
+            return 2;
+        }
+    };
 
     let mut files = Vec::new();
     for path in &paths {
@@ -79,18 +96,60 @@ fn run() -> i32 {
     let all = rules::all_rules();
     let selected: Vec<_> = match rules_filter {
         None => rules::default_rules(),
-        Some(ids) => {
-            if let Some(unknown) = ids.iter().find(|id| !all.iter().any(|r| r.id() == *id)) {
-                eprintln!("error: unknown rule '{}'", unknown);
-                eprintln!("available rules:");
-                for r in &all {
-                    eprintln!("  {} — {}", r.id(), r.description());
+        Some(tokens) => {
+            // Each token resolves as an exact rule id first, then as a named
+            // set from the config. Expansion preserves the set's order; ids
+            // are deduped across tokens.
+            let mut ids: Vec<&str> = Vec::new();
+            for token in &tokens {
+                let resolved: Option<Vec<&str>> = if all.iter().any(|r| r.id() == token) {
+                    Some(vec![token])
+                } else {
+                    config
+                        .sets
+                        .get(token)
+                        .map(|set| set.iter().map(String::as_str).collect())
+                };
+                match resolved {
+                    Some(expanded) => {
+                        for id in expanded {
+                            if !ids.contains(&id) {
+                                ids.push(id);
+                            }
+                        }
+                    }
+                    None => {
+                        eprintln!("error: unknown rule or set '{token}'");
+                        eprintln!("available rules:");
+                        for r in &all {
+                            eprintln!("  {} — {}", r.id(), r.description());
+                        }
+                        if config.sets.is_empty() {
+                            eprintln!(
+                                "available sets: (none — declare [sets.<name>] in sastql.toml)"
+                            );
+                        } else {
+                            eprintln!("available sets:");
+                            for name in config.sets.keys() {
+                                eprintln!("  {name}");
+                            }
+                        }
+                        return 2;
+                    }
                 }
-                return 2;
             }
-            all.into_iter()
-                .filter(|r| ids.iter().any(|id| r.id() == id))
-                .collect()
+            // Keep the resolved order (a set's order is the author's intent).
+            // Registry is tiny — position+remove beats a lifetime-carrying map.
+            let mut all = all;
+            let mut selected: Vec<Box<dyn Rule>> = Vec::with_capacity(ids.len());
+            for id in &ids {
+                let pos = all
+                    .iter()
+                    .position(|r| r.id() == *id)
+                    .expect("ids validated against rules and sets");
+                selected.push(all.remove(pos));
+            }
+            selected
         }
     };
 
@@ -114,6 +173,9 @@ fn run() -> i32 {
         };
         violations.extend(analyzer.analyze(&file.display().to_string(), &statements, dialect));
     }
+
+    // Config severity overrides apply after analysis — rules stay stateless.
+    config.apply_severities(&mut violations);
 
     let report = Report {
         violations,

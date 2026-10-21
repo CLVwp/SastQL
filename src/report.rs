@@ -18,6 +18,23 @@ impl fmt::Display for Severity {
     }
 }
 
+/// Parses the severity strings accepted in `sastql.toml` — case-sensitive
+/// lowercase, so a typo fails loudly instead of silently defaulting.
+impl std::str::FromStr for Severity {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "error" => Ok(Severity::Error),
+            "warning" => Ok(Severity::Warning),
+            "info" => Ok(Severity::Info),
+            _ => Err(format!(
+                "invalid severity '{s}' (expected \"error\", \"warning\" or \"info\")"
+            )),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Violation {
     pub file: String,

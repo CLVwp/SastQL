@@ -71,7 +71,7 @@ sastql check queries/ --dialect postgres --rules select-star,no-where-on-mutatio
 sastql check queries/ --dialect postgres --rules missing-limit
 ```
 
-Exit codes: `0` clean · `1` violations found · `2` parse or IO error. Designed to drop straight into CI.
+Exit codes: `0` clean · `1` violations found · `2` parse, config or IO error. Designed to drop straight into CI.
 
 Example output (real, from the fixtures below — each violation points at the line of its offending statement):
 
@@ -95,6 +95,23 @@ tests/fixtures/dirty\portability.sql:5:1: warning dialect-portability: SQLite ha
 ```
 
 When a position cannot be established honestly, the violation carries no position at all (`file: severity rule-id: …`, `"line": null` in JSON) — never a wrong one.
+
+## Configuration
+
+A project can ship a `sastql.toml` for per-rule severity overrides and named rule sets:
+
+```toml
+[severity]
+select-star = "warning"
+float-money = "info"
+
+[sets.ci]
+rules = ["select-star", "no-where-on-mutation"]
+```
+
+- The file is auto-discovered as `sastql.toml` in the **current directory**, or passed explicitly with `--config <path>`. No file = default behavior, never an error.
+- `--rules` accepts rule ids **or** set names, mixed freely: `--rules ci,no-where-on-mutation`.
+- Fail loudly: an unknown rule id, set member, severity string or key is a config error — exit `2` with the offending entry named.
 
 ## Try the demo
 
@@ -149,7 +166,7 @@ v0.2 ships 25 rules — the table above — all implemented and tested. Next, in
 | # | Item | What it means |
 |---|---|---|
 | 1 | **Precise line/column** — ✅ Shipped | Violations carry the statement-level line/column of the offending statement's first token (`file:line:col`, `line`/`column` in JSON), degrading honestly to no position when it cannot be established. Statement-level is the ceiling: AST nodes carry no spans in sqlparser 0.63. |
-| 2 | **`sastql.toml`** | Per-rule severity overrides and named rule sets, so teams stop pasting long `--rules` lists into CI. |
+| 2 | **`sastql.toml`** — ✅ Shipped | Per-rule severity overrides and named rule sets in `sastql.toml` (auto-discovered or `--config`); `--rules` accepts set names. Invalid config = exit `2`; missing config = never an error. |
 | 3 | **SARIF output + GitHub Action** | `--format sarif` for code-scanning, plus a ready-made action for inline PR annotations. |
 | 4 | **`--check-app`** | Scan SQL strings inside application source (Rust/TS/Python) for injection-prone concatenation. |
 
