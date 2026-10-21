@@ -306,3 +306,150 @@ fn violation_carries_statement_line_and_column() {
         "pinned line/column missing in:\n{stdout}"
     );
 }
+
+// --- sastql.toml: severity overrides and named rule sets ---------------------
+
+/// Per-test temp dir: same pattern as `parse_error_exits_2_with_file_and_message`,
+/// suffixed per test so parallel runs never share state.
+fn temp_dir_named(name: &str) -> std::path::PathBuf {
+    let dir = std::env::temp_dir().join(format!("sastql-test-{}-{name}", std::process::id()));
+    std::fs::create_dir_all(&dir).expect("temp dir should be creatable");
+    dir
+}
+
+#[test]
+fn config_severity_override_changes_emitted_severity() {
+    let dir = temp_dir_named("sev-override");
+    let cfg = dir.join("sastql.toml");
+    std::fs::write(&cfg, "[severity]\nselect-star = \"error\"\n").expect("config writable");
+    let path = cfg.to_str().expect("utf-8 path");
+
+    let (code, stdout, stderr) = sastql(&[
+        "check",
+        "tests/fixtures/dirty",
+        "--dialect",
+        "sqlite",
+        "--format",
+        "json",
+        "--config",
+        path,
+        path,
+    ]);
+    assert_eq!(code, 1, "stdout:\n{stdout}\nstderr:\n{stderr}");
+    assert!(
+        stdout.contains("\"rule_id\": \"select-star\", \"severity\": \"error\""),
+        "override must reach the JSON output: {stdout}"
+    );
+
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn rules_accepts_named_set_from_config() {
+    let dir = temp_dir_named("rules-set");
+    let cfg = dir.join("sastql.toml");
+    std::fs::write(
+        &cfg,
+        "[sets.danger]\nrules = [\"select-star\", \"table-no-pk\"]\n",
+    )
+    .expect("config writable");
+    let path = cfg.to_str().expect("utf-8 path");
+
+    let (code, stdout, stderr) = sastql(&[
+        "check",
+        "tests/fixtures/dirty",
+        "--dialect",
+        "sqlite",
+        "--config",
+        path,
+        "--rules",
+        "danger",
+    ]);
+    assert_eq!(code, 1, "stdout:\n{stdout}\nstderr:\n{stderr}");
+    assert!(stdout.contains("select-star"), "stdout:\n{stdout}");
+    assert!(stdout.contains("table-no-pk"), "stdout:\n{stdout}");
+    assert!(
+        !stdout.contains("no-where-on-mutation"),
+        "only the set's rules may run: {stdout}"
+    );
+    assert!(stdout.contains("2 violation(s)"), "stdout:\n{stdout}");
+
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn config_missing_explicit_path_exits_2() {
+    let (code, _, stderr) = sastql(&[
+        "check",
+        "tests/fixtures/clean",
+        "--config",
+        "no-such-config.toml",
+    ]);
+    assert_eq!(code, 2);
+    assert!(stderr.contains("no-such-config.toml"), "stderr:\n{stderr}");
+}
+
+#[test]
+fn unknown_token_lists_rules_and_sets() {
+    let dir = temp_dir_named("unknown-token");
+    let cfg = dir.join("sastql.toml");
+    std::fs::write(&cfg, "[sets.danger]\nrules = [\"select-star\"]\n").expect("config writable");
+    let path = cfg.to_str().expect("utf-8 path");
+
+    let (code, _, stderr) = sastql(&[
+        "check",
+        "tests/fixtures/clean",
+        "--config",
+        path,
+        "--rules",
+        "nope",
+    ]);
+    assert_eq!(code, 2);
+    assert!(
+        stderr.contains("unknown rule or set 'nope'"),
+        "stderr:\n{stderr}"
+    );
+    assert!(stderr.contains("available rules:"), "stderr:\n{stderr}");
+    assert!(stderr.contains("available sets:"), "stderr:\n{stderr}");
+    assert!(stderr.contains("danger"), "stderr:\n{stderr}");
+
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn config_auto_discovered_in_current_directory() {
+    let dir = temp_dir_named("autodiscovery");
+    std::fs::write(
+        dir.join("sastql.toml"),
+        "[severity]\nno-where-on-mutation = \"info\"\n",
+    )
+    .expect("config writable");
+    let fixtures = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/dirty")
+        .to_str()
+        .expect("utf-8 path")
+        .to_string();
+
+    // `--config` absent: the binary must pick up ./sastql.toml from its cwd.
+    let output = Command::new(env!("CARGO_BIN_EXE_sastql"))
+        .args([
+            "check",
+            &fixtures,
+            "--dialect",
+            "sqlite",
+            "--format",
+            "json",
+        ])
+        .current_dir(&dir)
+        .output()
+        .expect("sastql binary should run");
+    let code = output.status.code().unwrap_or(-1);
+    let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
+    assert_eq!(code, 1, "stdout:\n{stdout}");
+    assert!(
+        stdout.contains("\"rule_id\": \"no-where-on-mutation\", \"severity\": \"info\""),
+        "auto-discovered config must apply (default severity is error): {stdout}"
+    );
+
+    std::fs::remove_dir_all(&dir).ok();
+}
