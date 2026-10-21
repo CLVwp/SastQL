@@ -66,7 +66,7 @@ CONTRIBUTING.md  fork policy, PR rules — license-touching PRs rejected on sigh
 - **Fail loudly**: a parse error is exit code `2` with the message — never skip a file silently. Violations found → exit `1`. Clean → `0`.
 - Rule ids are kebab-case, stable once released (CI depends on them).
 - No new dependency without a one-line justification in the PR/commit.
-- Keep violations self-contained: rule id, severity, message, offending SQL snippet. (Line/col precision is a roadmap item — don't fake it.)
+- Keep violations self-contained: rule id, severity, message, offending SQL snippet, plus the statement-level line/column of the first token. When the position cannot be established honestly, the violation carries no position at all — never print a wrong one ("honest degradation"). Per-expression spans are impossible in sqlparser 0.63: AST nodes carry no spans, so statement-level is the finest precision we can attribute.
 
 ## Distribution (npm)
 

@@ -282,3 +282,27 @@ fn multiple_rules_comma_separated() {
     assert!(stdout.contains("grant-all"), "stdout:\n{stdout}");
     assert!(stdout.contains("3 violation(s)"), "stdout:\n{stdout}"); // 2 + 1
 }
+
+/// Statement-level line/column (roadmap item 1): the violation points at the
+/// line of its offending statement. Pinned from real output, never invented:
+/// `DELETE FROM sessions` sits on line 4 of tests/fixtures/dirty/mutations.sql.
+/// The file field is deliberately left out of the pin (path separators differ
+/// across platforms); rule/severity/line/column are platform-stable.
+#[test]
+fn violation_carries_statement_line_and_column() {
+    let (code, stdout, _) = sastql(&[
+        "check",
+        "tests/fixtures/dirty",
+        "--dialect",
+        "sqlite",
+        "--format",
+        "json",
+    ]);
+    assert_eq!(code, 1, "stdout:\n{stdout}");
+    assert!(
+        stdout.contains(
+            "\"rule_id\": \"no-where-on-mutation\", \"severity\": \"error\", \"line\": 4, \"column\": 1"
+        ),
+        "pinned line/column missing in:\n{stdout}"
+    );
+}
