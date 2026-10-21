@@ -65,6 +65,7 @@ impl Report {
 pub enum OutputFormat {
     Human,
     Json,
+    Sarif,
 }
 
 impl OutputFormat {
@@ -72,6 +73,7 @@ impl OutputFormat {
         match self {
             OutputFormat::Human => human(report),
             OutputFormat::Json => json(report),
+            OutputFormat::Sarif => sarif(report),
         }
     }
 }
@@ -123,6 +125,74 @@ fn json(report: &Report) -> String {
         "{{\n  \"files_scanned\": {},\n  \"violations\": [\n{}\n  ]\n}}\n",
         report.files_scanned,
         items.join(",\n")
+    )
+}
+
+/// SARIF 2.1.0 for GitHub code scanning. Severity maps Error → "error",
+/// Warning → "warning", Info → "note" (SARIF has no "info").
+fn sarif(report: &Report) -> String {
+    // ponytail: sarif stays hand-rolled too — same ceiling as json().
+    // One `rules` entry per distinct rule id, first-seen order, deduped.
+    let mut rules: Vec<&str> = Vec::new();
+    for v in &report.violations {
+        if !rules.contains(&v.rule_id) {
+            rules.push(v.rule_id);
+        }
+    }
+    let rules_json: Vec<String> = rules
+        .iter()
+        .map(|id| {
+            format!(
+                "            {{\n              \"id\": \"{}\",\n              \"helpUri\": \"https://github.com/CLVwp/SastQL#features-v02\"\n            }}",
+                escape(id)
+            )
+        })
+        .collect();
+    let results: Vec<String> = report
+        .violations
+        .iter()
+        .map(|v| {
+            let level = match v.severity {
+                Severity::Error => "error",
+                Severity::Warning => "warning",
+                Severity::Info => "note",
+            };
+            // Honest degradation: no honest position → the whole `locations`
+            // key is omitted, never a wrong or zero one (same convention as
+            // `"line": null` in json()).
+            let locations = match v.location {
+                Some((line, column)) => format!(
+                    ",\n          \"locations\": [\n            {{\n              \"physicalLocation\": {{\n                \"artifactLocation\": {{\n                  \"uri\": \"{}\"\n                }},\n                \"region\": {{\n                  \"startLine\": {line},\n                  \"startColumn\": {column},\n                  \"snippet\": {{ \"text\": \"{}\" }}\n                }}\n              }}\n            }}\n          ]",
+                    // OS separators are not valid in a SARIF uri.
+                    escape(&v.file.replace('\\', "/")),
+                    // The offending SQL travels with the violation — region
+                    // snippet is SARIF's slot for it (self-contained rule).
+                    escape(&v.snippet)
+                ),
+                None => String::new(),
+            };
+            format!(
+                "        {{\n          \"ruleId\": \"{}\",\n          \"level\": \"{level}\",\n          \"message\": {{\n            \"text\": \"{}\"\n          }}{locations}\n        }}",
+                escape(v.rule_id),
+                escape(&v.message)
+            )
+        })
+        .collect();
+    // Empty arrays render as `[]`; populated ones put the brackets on their
+    // own lines (entries joined by ",\n" at the array's indent).
+    let rules_block = if rules_json.is_empty() {
+        String::new()
+    } else {
+        format!("\n{}\n          ", rules_json.join(",\n"))
+    };
+    let results_block = if results.is_empty() {
+        String::new()
+    } else {
+        format!("\n{}\n      ", results.join(",\n"))
+    };
+    format!(
+        "{{\n  \"$schema\": \"https://json.schemastore.org/sarif-2.1.0.json\",\n  \"version\": \"2.1.0\",\n  \"runs\": [\n    {{\n      \"tool\": {{\n        \"driver\": {{\n          \"name\": \"SastQL\",\n          \"version\": \"{}\",\n          \"informationUri\": \"https://github.com/CLVwp/SastQL\",\n          \"rules\": [{rules_block}]\n        }}\n      }},\n      \"results\": [{results_block}]\n    }}\n  ]\n}}\n",
+        env!("CARGO_PKG_VERSION"),
     )
 }
 
@@ -233,5 +303,87 @@ mod tests {
             j.contains("\"line\": null, \"column\": null"),
             "json must use null when the position is unknown: {j}"
         );
+    }
+
+    #[test]
+    fn sarif_valid_shape_and_level_mapping() {
+        let s = OutputFormat::Sarif.render(&sample());
+        assert!(s.contains("\"version\": \"2.1.0\""), "{s}");
+        assert!(s.contains("\"ruleId\": \"no-where-on-mutation\""), "{s}");
+        assert!(s.contains("\"level\": \"error\""), "{s}");
+        assert!(s.contains("\"startLine\": 3"), "{s}");
+        assert!(s.contains("\"startColumn\": 1"), "{s}");
+        // The rule appears in the driver's `rules` array too.
+        assert!(s.contains("\"id\": \"no-where-on-mutation\""), "{s}");
+        // The offending SQL travels in the region snippet (self-contained).
+        assert!(s.contains("\"snippet\": { \"text\":"), "{s}");
+        assert!(s.contains("DELETE FROM \\\"t\\\""), "{s}");
+    }
+
+    #[test]
+    fn sarif_warning_maps_to_warning() {
+        let mut report = sample();
+        report.violations[0].severity = Severity::Warning;
+        let s = OutputFormat::Sarif.render(&report);
+        assert!(s.contains("\"level\": \"warning\""), "{s}");
+    }
+
+    #[test]
+    fn sarif_info_maps_to_note() {
+        let mut report = sample();
+        report.violations[0].severity = Severity::Info;
+        let s = OutputFormat::Sarif.render(&report);
+        assert!(
+            s.contains("\"level\": \"note\""),
+            "SARIF has no \"info\" — Info maps to note: {s}"
+        );
+        assert!(!s.contains("\"level\": \"info\""), "{s}");
+    }
+
+    #[test]
+    fn sarif_uri_forward_slashes() {
+        let mut report = sample();
+        report.violations[0].file = "m\\db.sql".into();
+        let s = OutputFormat::Sarif.render(&report);
+        assert!(
+            s.contains("\"uri\": \"m/db.sql\""),
+            "uri must use forward slashes: {s}"
+        );
+    }
+
+    #[test]
+    fn sarif_without_location_omits_locations() {
+        let mut report = sample();
+        report.violations[0].location = None;
+        let s = OutputFormat::Sarif.render(&report);
+        assert!(
+            !s.contains("\"locations\""),
+            "no honest position means no locations key at all: {s}"
+        );
+        assert!(!s.contains("\"startLine\""), "{s}");
+        // The snippet only exists inside a region — it must not leak out.
+        assert!(!s.contains("\"snippet\""), "{s}");
+    }
+
+    #[test]
+    fn sarif_escapes_quotes() {
+        let mut report = sample();
+        report.violations[0].message = "no WHERE for \"t\"".into();
+        let s = OutputFormat::Sarif.render(&report);
+        assert!(
+            s.contains("no WHERE for \\\"t\\\""),
+            "quotes must be escaped: {s}"
+        );
+    }
+
+    #[test]
+    fn sarif_empty_report_has_empty_arrays() {
+        let report = Report {
+            violations: vec![],
+            files_scanned: 1,
+        };
+        let s = OutputFormat::Sarif.render(&report);
+        assert!(s.contains("\"results\": []"), "{s}");
+        assert!(s.contains("\"rules\": []"), "{s}");
     }
 }

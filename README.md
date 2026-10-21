@@ -64,6 +64,9 @@ sastql check migrations/ --dialect postgres
 # Analyze one file for SQLite, JSON output (CI-friendly)
 sastql check schema.sql --dialect sqlite --format json
 
+# SARIF 2.1.0 for GitHub code scanning (see the GitHub Action below)
+sastql check migrations/ --format sarif > sastql.sarif
+
 # Run only specific rules
 sastql check queries/ --dialect postgres --rules select-star,no-where-on-mutation
 
@@ -113,6 +116,21 @@ rules = ["select-star", "no-where-on-mutation"]
 - `--rules` accepts rule ids **or** set names, mixed freely: `--rules ci,no-where-on-mutation`.
 - Fail loudly: an unknown rule id, set member, severity string or key is a config error — exit `2` with the offending entry named.
 
+## GitHub Action
+
+A ready-made composite action ships at the repo root ([action.yml](action.yml)): it runs the scan through npx and uploads the SARIF report to GitHub code scanning — which also renders the violations as inline PR annotations.
+
+```yaml
+- uses: CLVwp/SastQL@main   # pin to a release tag (e.g. @v0.3) once one exists
+  with:
+    paths: migrations/ tests/        # required
+    dialect: postgres                # default: postgres
+    # rules: select-star,no-where-on-mutation   # optional — default: all default rules
+    # fail-on-violation: true                   # default: true — fails the job when violations were found
+```
+
+Requires the `security-events: write` permission in the calling workflow (code scanning upload).
+
 ## Try the demo
 
 The repo ships the fixtures the integration tests use — one clean set, one dirty set, and a realistic simulated database:
@@ -155,7 +173,7 @@ Per the conventions in [CLAUDE.md](CLAUDE.md): each rule has positive and negati
 
 - **Parser**: `sqlparser-rs`, one dialect per run (`PostgreSqlDialect` / `SQLiteDialect`). Unparseable SQL is a parse error (exit `2`), never silently skipped.
 - **Rules**: a single `Rule` trait over the AST. One file per rule, registered in one place.
-- **Output**: human-readable by default, `--format json` for machines.
+- **Output**: human-readable by default, `--format json` / `--format sarif` for machines.
 
 Full feature mapping and UML diagrams: [docs/UML.md](docs/UML.md).
 
@@ -167,7 +185,7 @@ v0.2 ships 25 rules — the table above — all implemented and tested. Next, in
 |---|---|---|
 | 1 | **Precise line/column** — ✅ Shipped | Violations carry the statement-level line/column of the offending statement's first token (`file:line:col`, `line`/`column` in JSON), degrading honestly to no position when it cannot be established. Statement-level is the ceiling: AST nodes carry no spans in sqlparser 0.63. |
 | 2 | **`sastql.toml`** — ✅ Shipped | Per-rule severity overrides and named rule sets in `sastql.toml` (auto-discovered or `--config`); `--rules` accepts set names. Invalid config = exit `2`; missing config = never an error. |
-| 3 | **SARIF output + GitHub Action** | `--format sarif` for code-scanning, plus a ready-made action for inline PR annotations. |
+| 3 | **SARIF output + GitHub Action** — ✅ Shipped | `--format sarif` (SARIF 2.1.0, severity mapped to SARIF levels with info → note, positions degrading honestly) for code scanning, plus a ready-made composite `action.yml`: npx scan → SARIF upload → inline PR annotations. |
 | 4 | **`--check-app`** | Scan SQL strings inside application source (Rust/TS/Python) for injection-prone concatenation. |
 
 ## License

@@ -1,0 +1,66 @@
+# Ready-made GitHub Action: scan SQL files with SastQL and upload the SARIF
+# report to code scanning — violations also show up as inline PR annotations.
+#
+# Usage in a workflow:
+#   - uses: CLVwp/SastQL@main   # pin to a release tag (e.g. @v0.3) once one exists
+#     with:
+#       paths: migrations/ tests/
+name: SastQL
+description: Static analysis for SQL files — SARIF results uploaded to code scanning (inline PR annotations).
+branding:
+  icon: database
+  color: blue
+
+inputs:
+  paths:
+    description: Files or directories to scan, e.g. "migrations/ tests/".
+    required: true
+  dialect:
+    description: Target SQL dialect (postgres | sqlite).
+    required: false
+    default: postgres
+  rules:
+    description: Comma-separated rule ids or named sets to run (default all default rules).
+    required: false
+    default: ""
+  fail-on-violation:
+    description: Fail the job when SastQL reports violations (exit code 1).
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Check out the repository
+      uses: actions/checkout@v4
+
+    - name: Run SastQL (SARIF)
+      id: scan
+      shell: bash
+      env:
+        # Inputs reach the script through the environment, never by string
+        # interpolation into the run block (script-injection guard).
+        SASTQL_PATHS: ${{ inputs.paths }}
+        SASTQL_DIALECT: ${{ inputs.dialect }}
+        SASTQL_RULES: ${{ inputs.rules }}
+      run: |
+        set +e  # violations exit 1 — capture the code and keep going so the SARIF upload still happens
+        args=(check $SASTQL_PATHS --dialect "$SASTQL_DIALECT" --format sarif)
+        if [ -n "$SASTQL_RULES" ]; then args+=(--rules "$SASTQL_RULES"); fi
+        npx --yes "@clv.wp/sastql" "${args[@]}" > sastql.sarif
+        echo "exitcode=$?" >> "$GITHUB_OUTPUT"
+
+    - name: Upload SARIF to code scanning
+      # A usage/parse error (exit 2) leaves no usable SARIF; the fail step
+      # below still reports it — fail loudly, no cryptic upload error.
+      if: steps.scan.outputs.exitcode != '2'
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: sastql.sarif
+
+    - name: Fail on violations
+      if: ${{ inputs.fail-on-violation == 'true' && steps.scan.outputs.exitcode != '0' }}
+      shell: bash
+      run: |
+        echo "SastQL found SQL issues (exit code ${{ steps.scan.outputs.exitcode }}) — see the code scanning alerts." >&2
+        exit 1

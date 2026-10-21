@@ -12,7 +12,7 @@ Each diagram lives in its own `.puml` file under [`docs/uml/`](uml/). To render:
 | 4 | Sequence — `check` command | [`sequence-check.puml`](uml/sequence-check.puml) |
 | 5 | State — analysis pipeline | [`pipeline-state.puml`](uml/pipeline-state.puml) |
 
-Out of scope for v0.2 (see roadmap in README): scanning SQL strings inside application source, SARIF output, autofix. Config file (`sastql.toml`: severity overrides + named rule sets) shipped since — see the README's Configuration section.
+Out of scope for v0.2 (see roadmap in README): scanning SQL strings inside application source, autofix. Shipped since: config file (`sastql.toml`: severity overrides + named rule sets) and SARIF output (`--format sarif` + ready-made GitHub Action) — see the README.
 
 ## Feature matrix — rules per dialect
 
@@ -44,14 +44,14 @@ Out of scope for v0.2 (see roadmap in README): scanning SQL strings inside appli
 | `limit-without-order-by` | `LIMIT`/`FETCH` without `ORDER BY` — arbitrary subset (opt-in via `--rules`) | ✅ | ✅ | warning (opt-in) |
 | `destructive-ddl` | `DROP TABLE`/`SCHEMA`/`DATABASE`, `TRUNCATE`, `ALTER TABLE DROP COLUMN` (opt-in via `--rules`) | ✅ | ✅ | warning (opt-in) |
 
-Note: output formatting is an enum + `match`, not a trait hierarchy — two formats don't justify polymorphism.
+Note: output formatting is an enum + `match`, not a trait hierarchy — three formats still don't justify polymorphism.
 
 ## Error model
 
 | Situation | Behaviour | Exit code |
 |---|---|---:|
 | All files clean | report "0 violations" | `0` |
-| ≥ 1 violation | violations rendered (human or JSON) | `1` |
+| ≥ 1 violation | violations rendered (human, JSON or SARIF) | `1` |
 | Parse error on any file | error to stderr, stop | `2` |
 | Path not found / unreadable | error to stderr | `2` |
 | Invalid `sastql.toml` (unknown rule id, set member, severity or key) | error to stderr naming the offender | `2` |
