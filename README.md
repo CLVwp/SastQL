@@ -73,16 +73,28 @@ sastql check queries/ --dialect postgres --rules missing-limit
 
 Exit codes: `0` clean · `1` violations found · `2` parse or IO error. Designed to drop straight into CI.
 
-Example output (real, from the fixtures below):
+Example output (real, from the fixtures below — each violation points at the line of its offending statement):
 
 ```
-tests/fixtures/dirty/mutations.sql: error no-where-on-mutation: DELETE from sessions has no WHERE clause; every row is affected
+tests/fixtures/dirty\ddl.sql:2:1: warning type-affinity: column created is declared DATETIME which gets NUMERIC affinity in SQLite; declare TEXT for ISO-8601 strings
+    CREATE TABLE events (id INTEGER, created DATETIME)
+tests/fixtures/dirty\ddl.sql:2:1: warning table-no-pk: table events has no PRIMARY KEY; declare one so rows have a stable identity
+    CREATE TABLE events (id INTEGER, created DATETIME)
+tests/fixtures/dirty\mutations.sql:2:1: warning select-star: SELECT * selects every column; list them explicitly
+    SELECT * FROM users
+tests/fixtures/dirty\mutations.sql:4:1: error no-where-on-mutation: DELETE from sessions has no WHERE clause; every row is affected
     DELETE FROM sessions
-tests/fixtures/dirty/portability.sql: warning not-in-null-trap: NOT IN over a subquery returns no rows if the subquery yields NULL; use NOT EXISTS
+tests/fixtures/dirty\null_comparison.sql:2:1: warning null-comparison: comparison with NULL is never true (=, !=, <> against NULL yield UNKNOWN); use IS NULL / IS NOT NULL
+    UPDATE users SET locked = true WHERE last_login = NULL
+tests/fixtures/dirty\portability.sql:3:1: warning not-in-null-trap: NOT IN over a subquery returns no rows if the subquery yields NULL; use NOT EXISTS
     SELECT id FROM users WHERE id NOT IN (SELECT manager_id FROM users)
+tests/fixtures/dirty\portability.sql:5:1: warning dialect-portability: SQLite has no NOW(); use datetime('now')
+    UPDATE users SET seen_at = NOW() WHERE id = 1
 
 4 file(s) scanned, 7 violation(s)
 ```
+
+When a position cannot be established honestly, the violation carries no position at all (`file: severity rule-id: …`, `"line": null` in JSON) — never a wrong one.
 
 ## Try the demo
 
@@ -120,7 +132,7 @@ cargo clippy -- -D warnings
 cargo fmt --check
 ```
 
-Per the conventions in [CLAUDE.md](CLAUDE.md): each rule has positive and negative unit tests; every rule that behaves differently per dialect is tested for each dialect; the integration tests in `tests/integration.rs` run the real binary over `tests/fixtures/` (parse → analyze → report) and assert on exit codes, rule ids and violation counts for both dialects. The CLI's fail-loudly contract is pinned end-to-end too: parse errors, missing paths and non-SQL input exit `2` with the message on stderr, and the parser layer has its own unit tests (BOM stripping, dialect leniency, invalid SQL).
+Per the conventions in [CLAUDE.md](CLAUDE.md): each rule has positive and negative unit tests; every rule that behaves differently per dialect is tested for each dialect; the integration tests in `tests/integration.rs` run the real binary over `tests/fixtures/` (parse → analyze → report) and assert on exit codes, rule ids and violation counts for both dialects. The CLI's fail-loudly contract is pinned end-to-end too: parse errors, missing paths and non-SQL input exit `2` with the message on stderr, and the parser layer has its own unit tests (BOM stripping, dialect leniency, invalid SQL, statement line/column recovery and its honest-degradation gate).
 
 ## Design
 
@@ -136,7 +148,7 @@ v0.2 ships 25 rules — the table above — all implemented and tested. Next, in
 
 | # | Item | What it means |
 |---|---|---|
-| 1 | **Precise line/column** | Track token spans so violations point at the exact line. Until then, violations carry the offending SQL snippet only — per CLAUDE.md, we don't fake precision we don't have. |
+| 1 | **Precise line/column** — ✅ Shipped | Violations carry the statement-level line/column of the offending statement's first token (`file:line:col`, `line`/`column` in JSON), degrading honestly to no position when it cannot be established. Statement-level is the ceiling: AST nodes carry no spans in sqlparser 0.63. |
 | 2 | **`sastql.toml`** | Per-rule severity overrides and named rule sets, so teams stop pasting long `--rules` lists into CI. |
 | 3 | **SARIF output + GitHub Action** | `--format sarif` for code-scanning, plus a ready-made action for inline PR annotations. |
 | 4 | **`--check-app`** | Scan SQL strings inside application source (Rust/TS/Python) for injection-prone concatenation. |

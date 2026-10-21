@@ -25,6 +25,11 @@ pub struct Violation {
     pub severity: Severity,
     pub message: String,
     pub snippet: String,
+    /// 1-based line/column of the offending statement's first token.
+    /// `None` = position unknown — we render no position at all rather
+    /// than a wrong one (statement-level is the honest ceiling: AST
+    /// nodes carry no spans in sqlparser 0.63).
+    pub location: Option<(u64, u64)>,
 }
 
 #[derive(Clone, Debug)]
@@ -57,10 +62,17 @@ impl OutputFormat {
 fn human(report: &Report) -> String {
     let mut out = String::new();
     for v in &report.violations {
-        out.push_str(&format!(
-            "{}: {} {}: {}\n    {}\n",
-            v.file, v.severity, v.rule_id, v.message, v.snippet
-        ));
+        match v.location {
+            Some((line, col)) => out.push_str(&format!(
+                "{}:{line}:{col}: {} {}: {}\n    {}\n",
+                v.file, v.severity, v.rule_id, v.message, v.snippet
+            )),
+            // No location known: the old position-less format, never a fake one.
+            None => out.push_str(&format!(
+                "{}: {} {}: {}\n    {}\n",
+                v.file, v.severity, v.rule_id, v.message, v.snippet
+            )),
+        }
     }
     out.push_str(&format!(
         "\n{} file(s) scanned, {} violation(s)\n",
@@ -76,8 +88,12 @@ fn json(report: &Report) -> String {
         .violations
         .iter()
         .map(|v| {
+            let (line, column) = match v.location {
+                Some((line, column)) => (line.to_string(), column.to_string()),
+                None => ("null".into(), "null".into()),
+            };
             format!(
-                "    {{\"file\": \"{}\", \"rule_id\": \"{}\", \"severity\": \"{}\", \"message\": \"{}\", \"snippet\": \"{}\"}}",
+                "    {{\"file\": \"{}\", \"rule_id\": \"{}\", \"severity\": \"{}\", \"line\": {line}, \"column\": {column}, \"message\": \"{}\", \"snippet\": \"{}\"}}",
                 escape(&v.file),
                 escape(v.rule_id),
                 escape(&v.severity.to_string()),
@@ -121,6 +137,7 @@ mod tests {
                 severity: Severity::Error,
                 message: "no WHERE".into(),
                 snippet: "DELETE FROM \"t\" WHERE \"x\" = \"1\"".into(),
+                location: Some((3, 1)),
             }],
             files_scanned: 1,
         }
@@ -154,6 +171,50 @@ mod tests {
         assert!(
             j.contains("SELECT 1;\\nDELETE"),
             "newline must be escaped: {j}"
+        );
+    }
+
+    #[test]
+    fn human_prints_statement_location() {
+        let h = OutputFormat::Human.render(&sample());
+        assert!(
+            h.contains("m/db.sql:3:1: error no-where-on-mutation:"),
+            "human output must carry file:line:col: {h}"
+        );
+    }
+
+    #[test]
+    fn json_prints_statement_location() {
+        let j = OutputFormat::Json.render(&sample());
+        assert!(
+            j.contains("\"line\": 3, \"column\": 1"),
+            "json output must carry line/column: {j}"
+        );
+    }
+
+    #[test]
+    fn human_without_location_has_no_fake_position() {
+        let mut report = sample();
+        report.violations[0].location = None;
+        let h = OutputFormat::Human.render(&report);
+        assert!(
+            h.starts_with("m/db.sql: error no-where-on-mutation:"),
+            "no location means the position-less format: {h}"
+        );
+        assert!(
+            !h.contains("db.sql:3:1"),
+            "no file:line:col position may be printed: {h}"
+        );
+    }
+
+    #[test]
+    fn json_without_location_is_null() {
+        let mut report = sample();
+        report.violations[0].location = None;
+        let j = OutputFormat::Json.render(&report);
+        assert!(
+            j.contains("\"line\": null, \"column\": null"),
+            "json must use null when the position is unknown: {j}"
         );
     }
 }

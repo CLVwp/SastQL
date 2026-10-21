@@ -143,7 +143,7 @@ pub(crate) fn check_sql(rule: &dyn Rule, sql: &str, dialect: DialectKind) -> Vec
     crate::parser::parse(sql, dialect)
         .expect("test SQL must parse")
         .iter()
-        .flat_map(|stmt| rule.check(stmt, dialect))
+        .flat_map(|located| rule.check(&located.stmt, dialect))
         .collect()
 }
 
