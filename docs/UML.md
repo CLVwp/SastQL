@@ -12,7 +12,7 @@ Each diagram lives in its own `.puml` file under [`docs/uml/`](uml/). To render:
 | 4 | Sequence — `check` command | [`sequence-check.puml`](uml/sequence-check.puml) |
 | 5 | State — analysis pipeline | [`pipeline-state.puml`](uml/pipeline-state.puml) |
 
-Out of scope for v0.2 (see roadmap in README): scanning SQL strings inside application source, autofix. Shipped since: config file (`sastql.toml`: severity overrides + named rule sets) and SARIF output (`--format sarif` + ready-made GitHub Action) — see the README.
+Out of scope for v0.2 (see roadmap in README): autofix. Shipped since: config file (`sastql.toml`: severity overrides + named rule sets), SARIF output (`--format sarif` + ready-made GitHub Action), and `--check-app` (SQL strings inside Rust/TS/JS/Python app source scanned for injection-prone concatenation, rule id `sql-concatenation`) — see the README.
 
 ## Feature matrix — rules per dialect
 

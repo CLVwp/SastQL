@@ -42,11 +42,12 @@ cargo run -- check tests/fixtures/ --dialect sqlite
 
 ```
 src/
-  main.rs        CLI entry (clap): check subcommand, --dialect, --format, --rules, --config
+  main.rs        CLI entry (clap): check subcommand, --dialect, --format, --rules, --config, --check-app
   parser.rs      parse(sql, dialect) -> Vec<Statement>; dialect selection lives here
   analyzer.rs    runs every rule over the parsed statements -> Report
   report.rs      Violation, Report, OutputFormat (Human | Json | Sarif), rendering, exit codes
   config.rs      sastql.toml: per-rule severity overrides + named rule sets (load, validate, resolve)
+  appscan.rs     --check-app: host-language lexers (Rust/TS/JS/Python) -> concat groups -> SQL-ness gate via parser
   rules/
     mod.rs       Rule trait + registry (all_rules / default_rules; opt_in filters defaults)
     *.rs         one file per rule, unit tests inside each file
@@ -67,6 +68,7 @@ CONTRIBUTING.md  fork policy, PR rules — license-touching PRs rejected on sigh
 - **Dialect-specific logic** goes inside the rule (check `dialect`), not in the parser layer. The parser must stay dialect-agnostic apart from selecting the `Dialect` impl.
 - **Fail loudly**: a parse error is exit code `2` with the message — never skip a file silently. Violations found → exit `1`. Clean → `0`.
 - **Config (`sastql.toml`)**: an invalid config — unknown rule id, set member, severity string or key — is exit `2` with a precise message; the **absence** of a config file is never an error, defaults apply. Severity overrides are applied after analysis; rules stay stateless.
+- **`--check-app`**: scans SQL strings inside application source (Rust/TS/JS/Python). Host-language lexers match only string delimiters, comments and `+` — the SQL-ness of a candidate is decided ONLY by `parser::parse` (never regex on SQL); a candidate that does not parse is out of scope, not a skipped error. `--rules` combined with `--check-app` is a usage error (exit 2). The `sql-concatenation` id is deliberately NOT in the rules registry (its input is app source, not SQL statements), so it is not `--rules`-selectable and not severity-overridable in `sastql.toml` — an override fails validation as an unknown rule id.
 - Rule ids are kebab-case, stable once released (CI depends on them).
 - No new dependency without a one-line justification in the PR/commit.
 - Keep violations self-contained: rule id, severity, message, offending SQL snippet, plus the statement-level line/column of the first token. When the position cannot be established honestly, the violation carries no position at all — never print a wrong one ("honest degradation"). Per-expression spans are impossible in sqlparser 0.63: AST nodes carry no spans, so statement-level is the finest precision we can attribute.

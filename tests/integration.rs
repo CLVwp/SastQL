@@ -484,3 +484,82 @@ fn config_auto_discovered_in_current_directory() {
 
     std::fs::remove_dir_all(&dir).ok();
 }
+
+// --- --check-app: SQL strings in application source (roadmap item 4) ----------
+
+#[test]
+fn check_app_flags_sql_concatenation_in_ts() {
+    let dir = temp_dir_named("check-app-ts");
+    let file = dir.join("db.ts");
+    std::fs::write(
+        &file,
+        "const id = req.params.id;\nconst q = \"SELECT * FROM users WHERE id = \" + id;\n",
+    )
+    .expect("temp file should be writable");
+    let path = file.to_str().expect("utf-8 path");
+
+    let (code, stdout, stderr) = sastql(&["check", path, "--check-app", "--format", "json"]);
+    assert_eq!(code, 1, "stdout:\n{stdout}\nstderr:\n{stderr}");
+    assert!(
+        stdout.contains("\"rule_id\": \"sql-concatenation\""),
+        "stdout:\n{stdout}"
+    );
+    assert!(
+        stdout.contains("\"line\": 2"),
+        "pinned line missing:\n{stdout}"
+    );
+
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn check_app_clean_parameterized_files_exit_0() {
+    let dir = temp_dir_named("check-app-clean");
+    std::fs::write(
+        dir.join("app.py"),
+        "q = \"SELECT * FROM users WHERE id = ?\"\n",
+    )
+    .expect("temp file should be writable");
+    std::fs::write(
+        dir.join("main.rs"),
+        "static QUERY: &str = \"SELECT * FROM users WHERE id = $1\";\n",
+    )
+    .expect("temp file should be writable");
+    let path = dir.to_str().expect("utf-8 path");
+
+    let (code, stdout, stderr) = sastql(&["check", path, "--check-app"]);
+    assert_eq!(code, 0, "stdout:\n{stdout}\nstderr:\n{stderr}");
+    assert!(
+        stdout.contains("2 file(s) scanned, 0 violation(s)"),
+        "stdout:\n{stdout}"
+    );
+
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn check_app_rejects_rules_flag() {
+    let (code, _, stderr) = sastql(&[
+        "check",
+        "tests/fixtures/clean",
+        "--check-app",
+        "--rules",
+        "select-star",
+    ]);
+    assert_eq!(code, 2);
+    assert!(
+        stderr.contains("--rules does not apply to --check-app"),
+        "stderr:\n{stderr}"
+    );
+}
+
+#[test]
+fn check_app_no_app_files_exits_2() {
+    // tests/fixtures/clean holds only .sql files.
+    let (code, _, stderr) = sastql(&["check", "tests/fixtures/clean", "--check-app"]);
+    assert_eq!(code, 2);
+    assert!(
+        stderr.contains("no Rust/TS/JS/Python source files found"),
+        "stderr:\n{stderr}"
+    );
+}
