@@ -254,7 +254,13 @@ impl<'a> Lexer<'a> {
     /// is not an interpolation and stays silent. Raw prefixes change nothing
     /// here: Python tokenizes r"\"" as one string either way.
     fn py_string(&mut self, quote: char, is_f: bool, line: u64, col: u64) -> Step {
-        let triple = self.peek(0) == Some(quote) && self.peek(1) == Some(quote);
+        // Three quotes open a triple-quoted string; two followed by anything
+        // else is the empty string ('' / ""). Without the third-quote check
+        // the empty string mislexes as an unterminated triple quote and the
+        // rest of the file is silently skipped.
+        let triple = self.peek(0) == Some(quote)
+            && self.peek(1) == Some(quote)
+            && self.peek(2) == Some(quote);
         let qlen = if triple { 3 } else { 1 };
         for _ in 0..qlen {
             self.bump();
@@ -322,6 +328,10 @@ impl<'a> Lexer<'a> {
 
     fn step_js(&mut self, line: u64, col: u64) -> Step {
         let c = self.peek(0).expect("caller peeked");
+        // ponytail: JS regex literals (/…/flags) are not lexed — a regex
+        // containing a quote or backtick reads as a string opener and the
+        // file tail stops at the closing quote that never comes. Safe
+        // failure: fewer findings, never a wrong one.
         match c {
             '\'' | '"' => self.js_quoted(c, line, col),
             '`' => self.js_template(line, col),
@@ -417,6 +427,9 @@ impl<'a> Lexer<'a> {
         let c = self.peek(0).expect("caller peeked");
         // Raw strings r"..", r#".."#, br"..", br#".."#. A `"` must follow the
         // hashes so raw IDENTIFIERS (r#async) are not mistaken for one.
+        // ponytail: only one hash level is lexed — r##"…"## falls through to
+        // the plain-quote path (only bites if the content holds a `"`); add a
+        // hash-count loop if that ever matters.
         if c == 'r' && self.peek(1) == Some('"') {
             self.bump();
             return self.rust_string(None, line, col);
@@ -783,6 +796,20 @@ mod tests {
         // No f prefix: the braces are literal content, no interpolation.
         let src = "q = \"SELECT * FROM users WHERE name = '{name}'\"";
         assert!(scan_py(src).is_empty());
+    }
+
+    #[test]
+    fn py_empty_string_does_not_swallow_the_file() {
+        // Regression: `''` / `""` used to mislex as an unterminated triple
+        // quote and silently skip the rest of the file — findings after an
+        // empty string were lost.
+        let src = "q1 = f\"SELECT * FROM a WHERE id = {a}\"\nx = ''\nq2 = f\"SELECT * FROM b WHERE id = {b}\"\n";
+        let v = scan_py(src);
+        assert_eq!(
+            v.len(),
+            2,
+            "findings after an empty string must survive: {v:?}"
+        );
     }
 
     #[test]
