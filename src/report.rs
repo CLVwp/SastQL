@@ -143,7 +143,8 @@ fn sarif(report: &Report) -> String {
         .iter()
         .map(|id| {
             format!(
-                "            {{\n              \"id\": \"{id}\",\n              \"helpUri\": \"https://github.com/CLVwp/SastQL#features-v02\"\n            }}"
+                "            {{\n              \"id\": \"{}\",\n              \"helpUri\": \"https://github.com/CLVwp/SastQL#features-v02\"\n            }}",
+                escape(id)
             )
         })
         .collect();
@@ -161,9 +162,12 @@ fn sarif(report: &Report) -> String {
             // `"line": null` in json()).
             let locations = match v.location {
                 Some((line, column)) => format!(
-                    ",\n          \"locations\": [\n            {{\n              \"physicalLocation\": {{\n                \"artifactLocation\": {{\n                  \"uri\": \"{}\"\n                }},\n                \"region\": {{\n                  \"startLine\": {line},\n                  \"startColumn\": {column}\n                }}\n              }}\n            }}\n          ]",
+                    ",\n          \"locations\": [\n            {{\n              \"physicalLocation\": {{\n                \"artifactLocation\": {{\n                  \"uri\": \"{}\"\n                }},\n                \"region\": {{\n                  \"startLine\": {line},\n                  \"startColumn\": {column},\n                  \"snippet\": {{ \"text\": \"{}\" }}\n                }}\n              }}\n            }}\n          ]",
                     // OS separators are not valid in a SARIF uri.
-                    escape(&v.file.replace('\\', "/"))
+                    escape(&v.file.replace('\\', "/")),
+                    // The offending SQL travels with the violation — region
+                    // snippet is SARIF's slot for it (self-contained rule).
+                    escape(&v.snippet)
                 ),
                 None => String::new(),
             };
@@ -311,6 +315,17 @@ mod tests {
         assert!(s.contains("\"startColumn\": 1"), "{s}");
         // The rule appears in the driver's `rules` array too.
         assert!(s.contains("\"id\": \"no-where-on-mutation\""), "{s}");
+        // The offending SQL travels in the region snippet (self-contained).
+        assert!(s.contains("\"snippet\": { \"text\":"), "{s}");
+        assert!(s.contains("DELETE FROM \\\"t\\\""), "{s}");
+    }
+
+    #[test]
+    fn sarif_warning_maps_to_warning() {
+        let mut report = sample();
+        report.violations[0].severity = Severity::Warning;
+        let s = OutputFormat::Sarif.render(&report);
+        assert!(s.contains("\"level\": \"warning\""), "{s}");
     }
 
     #[test]
@@ -346,6 +361,8 @@ mod tests {
             "no honest position means no locations key at all: {s}"
         );
         assert!(!s.contains("\"startLine\""), "{s}");
+        // The snippet only exists inside a region — it must not leak out.
+        assert!(!s.contains("\"snippet\""), "{s}");
     }
 
     #[test]

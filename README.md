@@ -121,7 +121,7 @@ rules = ["select-star", "no-where-on-mutation"]
 A ready-made composite action ships at the repo root ([action.yml](action.yml)): it runs the scan through npx and uploads the SARIF report to GitHub code scanning — which also renders the violations as inline PR annotations.
 
 ```yaml
-- uses: CLVwp/SastQL@v0.2   # tag tracks releases
+- uses: CLVwp/SastQL@main   # pin to a release tag (e.g. @v0.3) once one exists
   with:
     paths: migrations/ tests/        # required
     dialect: postgres                # default: postgres
