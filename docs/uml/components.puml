@@ -4,7 +4,7 @@ skinparam componentStyle rectangle
 
 component "CLI\n(clap)" as cli
 component "Parser facade\n(sqlparser-rs)" as parser
-component "Analyzer" as analyzer
+component "Analyze loop\n(main.rs)" as analyzer
 component "Rule 1..N\n(one file per rule)" as rules
 component "Report" as report
 component "Human output" as human

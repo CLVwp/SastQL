@@ -1,6 +1,6 @@
-use sqlparser::ast::{LimitClause, Statement};
+use sqlparser::ast::Statement;
 
-use super::Rule;
+use super::{Rule, has_limit};
 use crate::parser::DialectKind;
 use crate::report::Severity;
 
@@ -30,12 +30,7 @@ impl Rule for MissingLimit {
             return Vec::new();
         };
         // ponytail: top-level query only; CTE/subquery LIMITs are not inspected.
-        let bounded = match &query.limit_clause {
-            Some(LimitClause::LimitOffset { limit: Some(_), .. }) => true,
-            Some(LimitClause::OffsetCommaLimit { .. }) => true,
-            _ => query.fetch.is_some(),
-        };
-        if bounded {
+        if has_limit(query) {
             Vec::new()
         } else {
             vec!["SELECT has no LIMIT; it can return unbounded rows".into()]

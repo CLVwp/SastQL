@@ -16,10 +16,6 @@ enum DialectKind {
 class ParserFacade {
   +parse(sql, dialect): Result~Vec~Statement~~
 }
-class Analyzer {
-  +rules: Vec~Box~dyn Rule~~
-  +analyze(statements, dialect): Report
-}
 interface Rule {
   +id(): str
   +severity(): Severity
@@ -76,9 +72,9 @@ enum OutputFormat {
 
 Cli --> DialectKind
 Cli --> ParserFacade : parse
-Cli --> Analyzer : analyze
+Cli --> Rule : check (analyze loop)
 Cli --> OutputFormat : render
-Analyzer o-- Rule
+Cli --> Report : build
 Rule <|.. SelectStar
 Rule <|.. NoWhereOnMutation
 Rule <|.. MissingLimit
@@ -105,6 +101,5 @@ Rule <|.. NaiveTimestamp
 Rule <|.. LimitWithoutOrderBy
 Rule <|.. DestructiveDdl
 Rule --> Severity
-Analyzer --> Report
 Report o-- Violation
 @enduml

@@ -1,6 +1,6 @@
-use sqlparser::ast::{Query, SelectItem, SetExpr, Statement};
+use sqlparser::ast::{SelectItem, Statement};
 
-use super::Rule;
+use super::{Rule, for_each_select};
 use crate::parser::DialectKind;
 use crate::report::Severity;
 
@@ -23,22 +23,10 @@ impl Rule for SelectStar {
 
     fn check(&self, stmt: &Statement, _dialect: DialectKind) -> Vec<String> {
         let mut messages = Vec::new();
-        if let Statement::Query(query) = stmt {
-            check_query(query, &mut messages);
-        }
-        messages
-    }
-}
-
-fn check_query(query: &Query, messages: &mut Vec<String>) {
-    check_set_expr(&query.body, messages);
-}
-
-// ponytail: covers top-level selects and set-operation arms; subqueries
-// nested inside WHERE expressions are not visited yet — walk Expr when needed.
-fn check_set_expr(expr: &SetExpr, messages: &mut Vec<String>) {
-    match expr {
-        SetExpr::Select(select) => {
+        // ponytail: for_each_select covers top-level selects, set-op arms and
+        // CTE bodies; subqueries nested inside expressions are not visited
+        // yet — walk Expr when needed.
+        for_each_select(stmt, &mut |select| {
             for item in &select.projection {
                 match item {
                     SelectItem::Wildcard(_) => {
@@ -52,13 +40,8 @@ fn check_set_expr(expr: &SetExpr, messages: &mut Vec<String>) {
                     | SelectItem::ExprWithAliases { .. } => {}
                 }
             }
-        }
-        SetExpr::Query(inner) => check_query(inner, messages),
-        SetExpr::SetOperation { left, right, .. } => {
-            check_set_expr(left, messages);
-            check_set_expr(right, messages);
-        }
-        _ => {}
+        });
+        messages
     }
 }
 
@@ -90,6 +73,19 @@ mod tests {
             check_sql(
                 &SelectStar,
                 "SELECT id FROM users UNION SELECT * FROM admins",
+                DialectKind::Postgres
+            )
+            .len(),
+            1
+        );
+    }
+
+    #[test]
+    fn covers_cte_bodies() {
+        assert_eq!(
+            check_sql(
+                &SelectStar,
+                "WITH top AS (SELECT * FROM users) SELECT id FROM top",
                 DialectKind::Postgres
             )
             .len(),

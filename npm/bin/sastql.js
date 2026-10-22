@@ -9,15 +9,6 @@ const { spawnSync } = require("child_process");
 const { existsSync } = require("fs");
 const { dirname, join } = require("path");
 
-const PLATFORMS = [
-  "win32-x64",
-  "linux-x64-gnu",
-  "linux-x64-musl",
-  "linux-arm64-gnu",
-  "darwin-arm64",
-  "darwin-x64",
-];
-
 function die(msg) {
   process.stderr.write(`sastql: ${msg}\n`);
   process.exit(2);
@@ -60,11 +51,22 @@ let dir;
 try {
   dir = dirname(require.resolve(`${pkg}/package.json`));
 } catch {
+  // The supported list is stamped into the manifest at release time
+  // (stamp-main.mjs); a dev checkout has no list and prints the plain line.
+  let listed = "";
+  try {
+    const platforms = require("../package.json").sastql?.platforms;
+    if (Array.isArray(platforms) && platforms.length > 0) {
+      listed =
+        `\nsupported: ${platforms.join(", ")}` +
+        `\nif your platform is listed, reinstall with optional dependencies enabled`;
+    }
+  } catch {}
   die(
     `no binary for ${process.platform}-${process.arch}` +
       (process.platform === "linux" ? ` (libc: ${isGlibc() ? "glibc" : "musl"})` : "") +
-      ` — supported: ${PLATFORMS.join(", ")}` +
-      `\nif your platform is listed, reinstall with optional dependencies enabled`,
+      (listed ||
+        `\nif your platform is supported, reinstall with optional dependencies enabled`),
   );
 }
 
