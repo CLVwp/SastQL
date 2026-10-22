@@ -1,4 +1,3 @@
-mod analyzer;
 mod appscan;
 mod config;
 mod parser;
@@ -12,8 +11,8 @@ use std::process::exit;
 
 use clap::{Parser as ClapParser, Subcommand};
 
-use parser::DialectKind;
-use report::{OutputFormat, Report};
+use parser::{DialectKind, LocatedStatement};
+use report::{OutputFormat, Report, Violation};
 use rules::Rule;
 
 /// SastQL — SAST linter for SQL files (PostgreSQL & SQLite).
@@ -182,7 +181,6 @@ fn run() -> i32 {
         }
     };
 
-    let analyzer = analyzer::Analyzer { rules: selected };
     let mut violations = Vec::new();
     for file in &files {
         let content = match fs::read_to_string(file) {
@@ -217,7 +215,12 @@ fn run() -> i32 {
                     return 2;
                 }
             };
-            violations.extend(analyzer.analyze(&file.display().to_string(), &statements, dialect));
+            violations.extend(analyze(
+                &selected,
+                &file.display().to_string(),
+                &statements,
+                dialect,
+            ));
         }
     }
 
@@ -230,6 +233,36 @@ fn run() -> i32 {
     };
     print!("{}", format.render(&report));
     report.exit_code()
+}
+
+/// Runs every rule over every located statement of one parsed file.
+fn analyze(
+    rules: &[Box<dyn Rule>],
+    file: &str,
+    statements: &[LocatedStatement],
+    dialect: DialectKind,
+) -> Vec<Violation> {
+    let mut violations = Vec::new();
+    for stmt in statements {
+        for rule in rules {
+            let messages = rule.check(&stmt.stmt, dialect);
+            if messages.is_empty() {
+                continue;
+            }
+            let snippet = stmt.stmt.to_string();
+            for message in messages {
+                violations.push(Violation {
+                    file: file.into(),
+                    rule_id: rule.id(),
+                    severity: rule.severity(),
+                    message,
+                    snippet: snippet.clone(),
+                    location: stmt.location,
+                });
+            }
+        }
+    }
+    violations
 }
 
 fn collect_files(path: &Path, wanted: &[&str], out: &mut Vec<PathBuf>) -> io::Result<()> {

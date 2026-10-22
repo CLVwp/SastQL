@@ -2,7 +2,6 @@
 actor "User / CI" as U
 participant "CLI" as CLI
 participant "ParserFacade\n(sqlparser-rs)" as P
-participant "Analyzer" as A
 participant "Rules" as R
 participant "Report" as Rep
 
@@ -14,12 +13,11 @@ loop over .sql files
     CLI --> U : exit 2 + message
   else ok
     P --> CLI : Vec<Statement>
-    CLI -> A : analyze(statements, Postgres)
-    A -> R : check(stmt, dialect) for each rule
-    R --> A : Vec<Message>
+    CLI -> R : check(stmt, dialect) for each rule (analyze loop)
+    R --> CLI : Vec<Message>
   end
 end
-A --> CLI : Report
+CLI -> CLI : build Report
 CLI -> CLI : render (Human | Json | Sarif)
 CLI --> U : exit 0 | 1
 @enduml

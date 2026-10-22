@@ -1,6 +1,6 @@
 use sqlparser::ast::{Expr, OrderByKind, Statement};
 
-use super::Rule;
+use super::{Rule, last_fn_segment};
 use crate::parser::DialectKind;
 use crate::report::Severity;
 
@@ -48,14 +48,7 @@ fn is_random(expr: &Expr) -> bool {
     let Expr::Function(f) = expr else {
         return false;
     };
-    // Same idiom as dialect_portability: last dotted segment, case-insensitive,
-    // so pg_catalog.random() is caught too.
-    f.name
-        .to_string()
-        .to_lowercase()
-        .rsplit('.')
-        .next()
-        .is_some_and(|last| last == "random")
+    last_fn_segment(f) == "random"
 }
 
 #[cfg(test)]

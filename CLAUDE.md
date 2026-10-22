@@ -42,9 +42,8 @@ cargo run -- check tests/fixtures/ --dialect sqlite
 
 ```
 src/
-  main.rs        CLI entry (clap): check subcommand, --dialect, --format, --rules, --config, --check-app
+  main.rs        CLI entry (clap): check subcommand, --dialect, --format, --rules, --config, --check-app; analyze loop (rules over parsed statements)
   parser.rs      parse(sql, dialect) -> Vec<Statement>; dialect selection lives here
-  analyzer.rs    runs every rule over the parsed statements -> Report
   report.rs      Violation, Report, OutputFormat (Human | Json | Sarif), rendering, exit codes
   config.rs      sastql.toml: per-rule severity overrides + named rule sets (load, validate, resolve)
   appscan.rs     --check-app: host-language lexers (Rust/TS/JS/Python) -> concat groups -> SQL-ness gate via parser
@@ -76,7 +75,7 @@ CONTRIBUTING.md  fork policy, PR rules — license-touching PRs rejected on sigh
 ## Distribution (npm)
 
 - `npm/` wraps the binary for `npx` / `pnpm dlx` / `bunx` (esbuild/biome pattern): main package `@clv.wp/sastql` (npm's typosquat filter blocks unscoped `sastql` — too close to `fastq`; the `bin` name stays unscoped `sastql`) + one optionalDependency package per platform (`sastql-<os>-<arch>[-gnu|-musl]`).
-- Platform packages are **generated, not checked in** (`npm/scripts/make-platform-package.mjs`, output in `npm/pkgs/`, gitignored). Targets → package names are mapped in that script; adding a target means adding it there **and** to `npm/package.json` `optionalDependencies` **and** the release matrix.
+- Platform packages are **generated, not checked in** (`npm/scripts/make-platform-package.mjs`, output in `npm/pkgs/`, gitignored). Targets → package names are mapped in `npm/scripts/targets.mjs`; adding a target means adding it there **and** to `npm/package.json` `optionalDependencies` **and** the release matrix (`release.yml` publishes, `stamp-main.mjs` stamps the launcher's supported-platforms list from the same map).
 - Cargo version is the single source of truth: releases are tag-driven (`git tag vX.Y.Z && git push origin vX.Y.Z`, only from merged `main`). **Bump `Cargo.toml` via PR before tagging** — the binary's `--version` must equal the npm version (CI re-stamps npm files from the tag).
 - Auth is npm **trusted publishing (OIDC)**, no secret. Three invariants that each broke once — keep them true:
   - each package's Trusted Publisher on npmjs.com: repo `CLVwp/SastQL`, workflow `release.yml`, **empty environment**, `npm publish` toggle ON — new configs default to **stage-only** (since Sep 2026 it's a separate toggle);

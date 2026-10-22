@@ -1,6 +1,6 @@
-use sqlparser::ast::{LimitClause, Statement};
+use sqlparser::ast::Statement;
 
-use super::Rule;
+use super::{Rule, has_limit};
 use crate::parser::DialectKind;
 use crate::report::Severity;
 
@@ -32,12 +32,7 @@ impl Rule for LimitWithoutOrderBy {
         };
         // ponytail: top-level query only, like missing-limit. A bare SELECT
         // without limit belongs to missing-limit — this rule needs a limit.
-        let has_limit = match &query.limit_clause {
-            Some(LimitClause::LimitOffset { limit: Some(_), .. }) => true,
-            Some(LimitClause::OffsetCommaLimit { .. }) => true,
-            _ => query.fetch.is_some(),
-        };
-        if has_limit && query.order_by.is_none() {
+        if has_limit(query) && query.order_by.is_none() {
             vec![
                 "LIMIT without ORDER BY returns an arbitrary subset; add ORDER BY for deterministic paging"
                     .into(),

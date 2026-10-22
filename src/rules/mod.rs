@@ -24,7 +24,9 @@ pub mod type_affinity;
 pub mod union_without_all;
 pub mod weak_hash;
 
-use sqlparser::ast::{JoinConstraint, JoinOperator, Query, Select, SetExpr, Statement};
+use sqlparser::ast::{
+    Function, JoinConstraint, JoinOperator, LimitClause, Query, Select, SetExpr, Statement,
+};
 
 use crate::parser::DialectKind;
 use crate::report::Severity;
@@ -110,6 +112,27 @@ fn walk_set_expr_selects(set_expr: &SetExpr, f: &mut impl FnMut(&Select)) {
         }
         _ => {}
     }
+}
+
+/// The query bounds its result: `LIMIT n`, `LIMIT offset, n` or `FETCH`.
+pub(crate) fn has_limit(query: &Query) -> bool {
+    match &query.limit_clause {
+        Some(LimitClause::LimitOffset { limit: Some(_), .. }) => true,
+        Some(LimitClause::OffsetCommaLimit { .. }) => true,
+        _ => query.fetch.is_some(),
+    }
+}
+
+/// Last dotted segment of a function name, lowercased — `pg_catalog.md5()`
+/// and `NOW()` match their bare ids.
+pub(crate) fn last_fn_segment(f: &Function) -> String {
+    f.name
+        .to_string()
+        .to_lowercase()
+        .rsplit('.')
+        .next()
+        .unwrap_or_default()
+        .to_string()
 }
 
 /// The constraint carried by a join operator, if any (`CrossApply` /

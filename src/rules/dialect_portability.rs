@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use sqlparser::ast::visit_expressions;
 use sqlparser::ast::{CastKind, Expr, Statement};
 
-use super::Rule;
+use super::{Rule, last_fn_segment};
 use crate::parser::DialectKind;
 use crate::report::Severity;
 
@@ -56,12 +56,7 @@ impl Rule for DialectPortability {
             match expr {
                 Expr::Function(f) => {
                     // ponytail: plain denylist; extend as real-world cases show up.
-                    let name = f.name.to_string();
-                    let last = name
-                        .rsplit('.')
-                        .next()
-                        .unwrap_or(&name)
-                        .to_ascii_lowercase();
+                    let last = last_fn_segment(f);
                     if let Some((_, hint)) = functions.iter().find(|(fn_name, _)| *fn_name == last)
                     {
                         messages.push((*hint).into());

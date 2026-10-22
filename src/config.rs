@@ -105,8 +105,8 @@ impl Config {
     }
 
     /// Replaces each violation's severity when its rule id is overridden.
-    /// Runs after analysis — the `Rule` trait, the analyzer and the rendering
-    /// are untouched.
+    /// Runs after analysis — the `Rule` trait, the analyze loop and the
+    /// rendering are untouched.
     pub fn apply_severities(&self, violations: &mut [Violation]) {
         for v in violations.iter_mut() {
             if let Some(sev) = self.severity.get(v.rule_id) {

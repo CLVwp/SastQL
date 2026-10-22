@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use sqlparser::ast::visit_expressions;
 use sqlparser::ast::{Expr, Function, Statement};
 
-use super::Rule;
+use super::{Rule, last_fn_segment};
 use crate::parser::DialectKind;
 use crate::report::Severity;
 
@@ -43,11 +43,10 @@ impl Rule for WeakHash {
 const WEAK_HASHES: &[&str] = &["md5", "sha1"];
 
 fn weak_name(f: &Function) -> Option<String> {
-    // Same idiom as dialect_portability: last dotted segment, case-insensitive,
-    // so pg_catalog.md5() is caught too.
-    let name = f.name.to_string().to_lowercase();
-    let last = name.rsplit('.').next()?;
-    WEAK_HASHES.contains(&last).then(|| last.to_uppercase())
+    let last = last_fn_segment(f);
+    WEAK_HASHES
+        .contains(&last.as_str())
+        .then(|| last.to_uppercase())
 }
 
 #[cfg(test)]
